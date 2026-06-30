@@ -166,18 +166,19 @@ jobs:
         run: |
           mkdir -p artifacts
           curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash 2>&1 | tee artifacts/helm-validate.txt
-      - name: Install kubeval
+      - name: Install kubeconform
         run: |
-          curl -L https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz 2>&1 | tee -a artifacts/helm-validate.txt
-          sudo mv kubeval /usr/local/bin/ 2>&1 | tee -a artifacts/helm-validate.txt
+          curl -L https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz 2>&1 | tee -a artifacts/helm-validate.txt
+          sudo mv kubeconform /usr/local/bin/ 2>&1 | tee -a artifacts/helm-validate.txt
       - name: Helm lint
         run: |
           set -o pipefail
           helm lint ./helm 2>&1 | tee -a artifacts/helm-validate.txt
-      - name: Validate rendered manifests with kubeval
+      - name: Validate rendered manifests with kubeconform
         run: |
           set -o pipefail
-          helm template ./helm | kubeval --strict --kubernetes-version='1.27.0' 2>&1 | tee -a artifacts/helm-validate.txt
+          helm template ./helm > rendered.yaml
+          kubeconform -strict -summary -kubernetes-version 1.27.0 rendered.yaml 2>&1 | tee -a artifacts/helm-validate.txt
       - name: Upload helm validation log
         if: always()
         uses: actions/upload-artifact@v4
