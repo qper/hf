@@ -1,6 +1,6 @@
 module github.com/qper/hf
 
-go 1.25.0
+go 1.26.4
 
 require github.com/labstack/echo/v4 v4.15.4
 
