@@ -56,6 +56,10 @@ func newServer(cfg ...config.Config) *echo.Echo {
 		LogStatus: true,
 		LogMethod: true,
 		LogURI:    true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			log.Printf("method=%s uri=%s status=%d", v.Method, v.URI, v.Status)
+			return nil
+		},
 	}))
 	e.Use(middleware.Recover())
 
