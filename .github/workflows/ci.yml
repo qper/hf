@@ -202,6 +202,7 @@ jobs:
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.55.3 2>&1 | tee -a artifacts/security-scan.txt
+          sudo ln -sf /usr/local/bin/trivy /usr/bin/trivy || true
       - name: Run gosec
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
@@ -209,6 +210,7 @@ jobs:
           gosec ./... 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run Trivy filesystem scan
         run: |
+          export PATH="/usr/local/bin:/usr/bin:$PATH"
           set -o pipefail
           trivy fs --exit-code 1 --severity HIGH,CRITICAL . 2>&1 | tee -a artifacts/security-scan.txt
       - name: Upload security scan log
