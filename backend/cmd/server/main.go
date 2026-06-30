@@ -1,20 +1,66 @@
 package main
 
 import (
-  "fmt"
-  "io"
-  "log"
-  "net/http"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/smirnofflab/habitflow/internal/api"
+	"github.com/smirnofflab/habitflow/internal/config"
+	"github.com/smirnofflab/habitflow/internal/repository"
+	"github.com/smirnofflab/habitflow/internal/service"
 )
 
-func main() {
-  mux := http.NewServeMux()
-  mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
-    _, _ = io.WriteString(w, "ok")
-  })
+var version = "dev"
 
-  addr := ":8080"
-  fmt.Printf("listening on %s\n", addr)
-  log.Fatal(http.ListenAndServe(addr, mux))
+func main() {
+	cfg := config.Load()
+	cfg.Version = version
+
+	srv := newServer(cfg)
+	go func() {
+		if err := srv.Start(cfg.Addr); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server start failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("graceful shutdown failed: %v", err)
+	}
+}
+
+func newServer(cfg ...config.Config) *echo.Echo {
+	var appConfig config.Config
+	if len(cfg) > 0 {
+		appConfig = cfg[0]
+	} else {
+		appConfig = config.Load()
+	}
+
+	e := echo.New()
+	e.HideBanner = true
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	healthService := service.NewHealthService()
+	repo := repository.NewRepository()
+	_ = repo
+	apiHandler := api.NewHandler(healthService, appConfig.Version)
+	apiHandler.Register(e)
+
+	fmt.Printf("listening on %s\n", appConfig.Addr)
+	return e
 }
