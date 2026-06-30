@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/labstack/echo/v4"
@@ -15,6 +14,8 @@ import (
 	"github.com/qper/hf/internal/config"
 	"github.com/qper/hf/internal/repository"
 	"github.com/qper/hf/internal/service"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var version = "dev"
@@ -23,10 +24,15 @@ func main() {
 	cfg := config.Load()
 	cfg.Version = version
 
-	srv := newServer(cfg)
+	logger := newLogger(cfg.LogLevel)
+	defer logger.Sync()
+
+	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
+
+	srv := newServer(cfg, logger)
 	go func() {
 		if err := srv.Start(cfg.Addr); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server start failed: %v", err)
+			logger.Fatal("server start failed", zap.Error(err))
 		}
 	}()
 
@@ -38,16 +44,26 @@ func main() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
+		logger.Error("graceful shutdown failed", zap.Error(err))
 	}
 }
 
-func newServer(cfg ...config.Config) *echo.Echo {
+func newServer(cfg ...interface{}) *echo.Echo {
 	var appConfig config.Config
-	if len(cfg) > 0 {
-		appConfig = cfg[0]
-	} else {
+	var logger *zap.Logger
+	for _, item := range cfg {
+		switch v := item.(type) {
+		case config.Config:
+			appConfig = v
+		case *zap.Logger:
+			logger = v
+		}
+	}
+	if appConfig.Addr == "" {
 		appConfig = config.Load()
+	}
+	if logger == nil {
+		logger = newLogger(appConfig.LogLevel)
 	}
 
 	e := echo.New()
@@ -57,7 +73,17 @@ func newServer(cfg ...config.Config) *echo.Echo {
 		LogMethod: true,
 		LogURI:    true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			log.Printf("method=%s uri=%s status=%d", v.Method, v.URI, v.Status)
+			traceID := c.Request().Header.Get("X-Trace-Id")
+			if traceID == "" {
+				traceID = "-"
+			}
+			logger.Info("request",
+				zap.String("method", v.Method),
+				zap.String("path", v.URI),
+				zap.Int("status", v.Status),
+				zap.Int64("duration_ms", v.Latency.Milliseconds()),
+				zap.String("trace_id", traceID),
+			)
 			return nil
 		},
 	}))
@@ -69,6 +95,23 @@ func newServer(cfg ...config.Config) *echo.Echo {
 	apiHandler := api.NewHandler(healthService, appConfig.Version)
 	apiHandler.Register(e)
 
-	fmt.Printf("listening on %s\n", appConfig.Addr)
+	logger.Info("server listening", zap.String("addr", appConfig.Addr))
 	return e
+}
+
+func newLogger(level string) *zap.Logger {
+	var lvl zap.AtomicLevel
+	if err := lvl.UnmarshalText([]byte(strings.ToLower(level))); err != nil {
+		lvl.SetLevel(zap.InfoLevel)
+	} else {
+		lvl.SetLevel(lvl.Level())
+	}
+	cfg := zap.NewProductionConfig()
+	cfg.Level = lvl
+	cfg.Encoding = "json"
+	cfg.DisableStacktrace = true
+	cfg.EncoderConfig.TimeKey = "timestamp"
+	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	logger, _ := cfg.Build()
+	return logger
 }

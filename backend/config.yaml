@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+db:
+  dsn: postgres://postgres:postgres@localhost:5432/habitflow?sslmode=disable
+  poolsize: 10
+
+jwt:
+  accessexpiry: 15m
+  refreshexpiry: 168h
+
+editwindowdays: 7
+loglevel: info
