@@ -28,7 +28,11 @@ func TestServerStarts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected health endpoint to respond: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Fatalf("failed to close response body: %v", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
