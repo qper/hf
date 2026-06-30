@@ -202,8 +202,11 @@ jobs:
           go install github.com/securego/gosec/v2/cmd/gosec@latest 2>&1 | tee artifacts/security-scan.txt
       - name: Install Trivy
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.55.3 2>&1 | tee -a artifacts/security-scan.txt
-          sudo ln -sf /usr/local/bin/trivy /usr/bin/trivy || true
+          mkdir -p /tmp/trivy-bin
+          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.55.3/trivy_0.55.3_Linux-64bit.tar.gz | tar -xz -C /tmp/trivy-bin
+          sudo install /tmp/trivy-bin/trivy /usr/local/bin/trivy
+          sudo chmod +x /usr/local/bin/trivy
+          /usr/local/bin/trivy --version 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run gosec
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
