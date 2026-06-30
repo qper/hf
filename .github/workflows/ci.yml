@@ -34,11 +34,22 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
             ${{ runner.os }}-go-
       - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.0
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
       - name: Run golangci-lint
         run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          mkdir -p artifacts
           cd backend
-          golangci-lint run ./...
+          set -o pipefail
+          golangci-lint run ./... 2>&1 | tee ../artifacts/backend-lint.txt
+      - name: Upload backend lint log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-lint-log
+          path: artifacts/backend-lint.txt
 
   backend-test:
     name: Backend test
@@ -64,14 +75,22 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run tests
         run: |
+          mkdir -p artifacts
           cd backend
           mkdir -p test-results
-          go test ./... | tee test-results/backend-test.txt
+          set -o pipefail
+          go test ./... 2>&1 | tee test-results/backend-test.txt | tee ../artifacts/backend-test-log.txt
       - name: Upload backend test report
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-report
           path: backend/test-results/backend-test.txt
+      - name: Upload backend test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-log
+          path: artifacts/backend-test-log.txt
 
   frontend-lint:
     name: Frontend lint
@@ -88,9 +107,22 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefix frontend
       - name: Run ESLint
-        run: npm --prefix frontend run lint
+        run: |
+          mkdir -p artifacts
+          cd frontend
+          set -o pipefail
+          npm run lint 2>&1 | tee ../artifacts/frontend-lint.txt
       - name: Run TypeScript check
-        run: npm --prefix frontend run typecheck
+        run: |
+          cd frontend
+          set -o pipefail
+          npm run typecheck 2>&1 | tee -a ../artifacts/frontend-lint.txt
+      - name: Upload frontend lint log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-lint-log
+          path: artifacts/frontend-lint.txt
 
   frontend-test:
     name: Frontend test
@@ -108,14 +140,22 @@ jobs:
         run: npm ci --prefix frontend
       - name: Run Vitest
         run: |
+          mkdir -p artifacts
           cd frontend
           mkdir -p test-results
-          npx vitest run --reporter=verbose | tee test-results/frontend-test.txt
+          set -o pipefail
+          npx vitest run --reporter=verbose 2>&1 | tee test-results/frontend-test.txt | tee ../artifacts/frontend-test-log.txt
       - name: Upload frontend test report
         uses: actions/upload-artifact@v4
         with:
           name: frontend-test-report
           path: frontend/test-results/frontend-test.txt
+      - name: Upload frontend test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-log
+          path: artifacts/frontend-test-log.txt
 
   helm-validate:
     name: Helm validate
@@ -124,15 +164,27 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Helm
         run: |
-          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      - name: Install kubeval
+          mkdir -p artifacts
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash 2>&1 | tee artifacts/helm-validate.txt
+      - name: Install kubeconform
         run: |
-          curl -L https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
-          sudo mv kubeval /usr/local/bin/
+          curl -L https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz 2>&1 | tee -a artifacts/helm-validate.txt
+          sudo mv kubeconform /usr/local/bin/ 2>&1 | tee -a artifacts/helm-validate.txt
       - name: Helm lint
-        run: helm lint ./helm
-      - name: Validate rendered manifests with kubeval
-        run: helm template ./helm | kubeval --strict --kubernetes-version='1.27.0'
+        run: |
+          set -o pipefail
+          helm lint ./helm 2>&1 | tee -a artifacts/helm-validate.txt
+      - name: Validate rendered manifests with kubeconform
+        run: |
+          set -o pipefail
+          helm template ./helm > rendered.yaml
+          kubeconform -strict -summary -kubernetes-version 1.27.0 rendered.yaml 2>&1 | tee -a artifacts/helm-validate.txt
+      - name: Upload helm validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-validation-log
+          path: artifacts/helm-validate.txt
 
   security-scan:
     name: Security scan
@@ -144,11 +196,28 @@ jobs:
         with:
           go-version: '1.22'
       - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+        run: |
+          mkdir -p artifacts
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          go install github.com/securego/gosec/v2/cmd/gosec@latest 2>&1 | tee artifacts/security-scan.txt
       - name: Install Trivy
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.55.3
+          set -o pipefail
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.72.0
+          /usr/local/bin/trivy --version 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run gosec
-        run: gosec ./...
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          set -o pipefail
+          gosec ./... 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run Trivy filesystem scan
-        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+        run: |
+          export PATH="/usr/local/bin:/usr/bin:$PATH"
+          set -o pipefail
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL . 2>&1 | tee -a artifacts/security-scan.txt
+      - name: Upload security scan log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-log
+          path: artifacts/security-scan.txt
