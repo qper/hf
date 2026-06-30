@@ -55,13 +55,27 @@ func Load() Config {
 	v.AddConfigPath(".")
 	v.AddConfigPath("./config")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.BindEnv("SERVER_PORT")
-	v.BindEnv("DB_DSN")
-	v.BindEnv("DB_POOL_SIZE")
-	v.BindEnv("JWT_ACCESS_EXPIRY")
-	v.BindEnv("JWT_REFRESH_EXPIRY")
-	v.BindEnv("EDIT_WINDOW_DAYS")
-	v.BindEnv("LOG_LEVEL")
+	if err := v.BindEnv("SERVER_PORT"); err != nil {
+		panic(fmt.Errorf("bind env SERVER_PORT: %w", err))
+	}
+	if err := v.BindEnv("DB_DSN"); err != nil {
+		panic(fmt.Errorf("bind env DB_DSN: %w", err))
+	}
+	if err := v.BindEnv("DB_POOL_SIZE"); err != nil {
+		panic(fmt.Errorf("bind env DB_POOL_SIZE: %w", err))
+	}
+	if err := v.BindEnv("JWT_ACCESS_EXPIRY"); err != nil {
+		panic(fmt.Errorf("bind env JWT_ACCESS_EXPIRY: %w", err))
+	}
+	if err := v.BindEnv("JWT_REFRESH_EXPIRY"); err != nil {
+		panic(fmt.Errorf("bind env JWT_REFRESH_EXPIRY: %w", err))
+	}
+	if err := v.BindEnv("EDIT_WINDOW_DAYS"); err != nil {
+		panic(fmt.Errorf("bind env EDIT_WINDOW_DAYS: %w", err))
+	}
+	if err := v.BindEnv("LOG_LEVEL"); err != nil {
+		panic(fmt.Errorf("bind env LOG_LEVEL: %w", err))
+	}
 	v.AutomaticEnv()
 
 	_ = v.ReadInConfig()
@@ -104,9 +118,7 @@ func parsePort(port string) int {
 	if port == "" {
 		return 8080
 	}
-	if strings.HasPrefix(port, ":") {
-		port = strings.TrimPrefix(port, ":")
-	}
+	port = strings.TrimPrefix(port, ":")
 	if port == "" {
 		return 8080
 	}

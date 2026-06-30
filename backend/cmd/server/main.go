@@ -25,7 +25,11 @@ func main() {
 	cfg.Version = version
 
 	logger := newLogger(cfg.LogLevel)
-	defer logger.Sync()
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			_ = err
+		}
+	}()
 
 	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
 
