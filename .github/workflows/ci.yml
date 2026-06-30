@@ -34,9 +34,12 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
             ${{ runner.os }}-go-
       - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.0
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.0
       - name: Run golangci-lint
         run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
           mkdir -p artifacts
           cd backend
           set -o pipefail
@@ -194,12 +197,14 @@ jobs:
       - name: Install gosec
         run: |
           mkdir -p artifacts
+          export PATH="$(go env GOPATH)/bin:$PATH"
           go install github.com/securego/gosec/v2/cmd/gosec@latest 2>&1 | tee artifacts/security-scan.txt
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.55.3 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run gosec
         run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
           set -o pipefail
           gosec ./... 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run Trivy filesystem scan
