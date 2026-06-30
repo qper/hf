@@ -72,7 +72,7 @@ helm-diff:
 
 deploy:
 	$(call print_step,Deploying Helm chart)
-	@helm upgrade --install app ./helm --namespace $(NAMESPACE) --create-namespace --dry-run
+	@helm install app ./helm --namespace $(NAMESPACE) --create-namespace --dry-run=client
 
 port-forward:
 	$(call print_step,Starting port-forward)
