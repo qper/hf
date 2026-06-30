@@ -11,10 +11,10 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/smirnofflab/habitflow/internal/api"
-	"github.com/smirnofflab/habitflow/internal/config"
-	"github.com/smirnofflab/habitflow/internal/repository"
-	"github.com/smirnofflab/habitflow/internal/service"
+	"github.com/qper/hf/internal/api"
+	"github.com/qper/hf/internal/config"
+	"github.com/qper/hf/internal/repository"
+	"github.com/qper/hf/internal/service"
 )
 
 var version = "dev"

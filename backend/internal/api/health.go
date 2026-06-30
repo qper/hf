@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/smirnofflab/habitflow/internal/service"
+	"github.com/qper/hf/internal/service"
 )
 
 type Handler struct {
