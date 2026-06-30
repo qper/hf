@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - .env.local
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-habitflow}
+      POSTGRES_USER: ${POSTGRES_USER:-habitflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-habitflow}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-habitflow} -d ${POSTGRES_DB:-habitflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-habitflow}:${POSTGRES_PASSWORD:-habitflow}@postgres:5432/${POSTGRES_DB:-habitflow}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - .env.local
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    working_dir: /app
+
+volumes:
+  postgres-data:
+    driver: local
+  grafana-data:
+    driver: local
