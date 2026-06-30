@@ -203,7 +203,7 @@ jobs:
       - name: Install Trivy
         run: |
           set -o pipefail
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.55.3
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.72.0
           /usr/local/bin/trivy --version 2>&1 | tee -a artifacts/security-scan.txt
       - name: Run gosec
         run: |
