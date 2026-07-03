@@ -77,6 +77,9 @@ func newServer(cfg ...interface{}) *echo.Echo {
 		LogMethod: true,
 		LogURI:    true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			if c.Path() == "/healthz" || c.Path() == "/readyz" {
+				return nil
+			}
 			traceID := c.Request().Header.Get("X-Trace-Id")
 			if traceID == "" {
 				traceID = "-"
