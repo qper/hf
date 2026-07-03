@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/qper/hf/internal/api"
 	"github.com/qper/hf/internal/config"
+	"github.com/qper/hf/internal/metrics"
 	"github.com/qper/hf/internal/repository"
 	"github.com/qper/hf/internal/service"
 	"go.uber.org/zap"
@@ -33,10 +34,17 @@ func main() {
 
 	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
 
-	srv := newServer(cfg, logger)
+	appMetrics := metrics.NewMetrics()
+	srv := newServer(cfg, logger, appMetrics)
+	metricsServer := newMetricsServer(appMetrics)
 	go func() {
 		if err := srv.Start(cfg.Addr); err != nil && err != http.ErrServerClosed {
 			logger.Fatal("server start failed", zap.Error(err))
+		}
+	}()
+	go func() {
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("metrics server start failed", zap.Error(err))
 		}
 	}()
 
@@ -50,17 +58,23 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("graceful shutdown failed", zap.Error(err))
 	}
+	if err := metricsServer.Shutdown(ctx); err != nil {
+		logger.Error("metrics server shutdown failed", zap.Error(err))
+	}
 }
 
 func newServer(cfg ...interface{}) *echo.Echo {
 	var appConfig config.Config
 	var logger *zap.Logger
+	var appMetrics *metrics.Metrics
 	for _, item := range cfg {
 		switch v := item.(type) {
 		case config.Config:
 			appConfig = v
 		case *zap.Logger:
 			logger = v
+		case *metrics.Metrics:
+			appMetrics = v
 		}
 	}
 	if appConfig.Addr == "" {
@@ -72,6 +86,10 @@ func newServer(cfg ...interface{}) *echo.Echo {
 
 	e := echo.New()
 	e.HideBanner = true
+	if appMetrics == nil {
+		appMetrics = metrics.NewMetrics()
+	}
+	e.Use(appMetrics.Middleware())
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus: true,
 		LogMethod: true,
@@ -104,6 +122,22 @@ func newServer(cfg ...interface{}) *echo.Echo {
 
 	logger.Info("server listening", zap.String("addr", appConfig.Addr))
 	return e
+}
+
+func newMetricsServer(appMetrics *metrics.Metrics) *http.Server {
+	if appMetrics == nil {
+		appMetrics = metrics.NewMetrics()
+	}
+	return &http.Server{
+		Addr: ":9090",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/metrics" {
+				http.NotFound(w, r)
+				return
+			}
+			appMetrics.Handler().ServeHTTP(w, r)
+		}),
+	}
 }
 
 func newLogger(level string) *zap.Logger {
