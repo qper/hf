@@ -19,13 +19,14 @@ services:
       start_period: 10s
 
   backend:
+    profiles: ["backend"]
     build:
       context: ./backend
       dockerfile: Dockerfile
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-habitflow}:${POSTGRES_PASSWORD:-habitflow}@postgres:5432/${POSTGRES_DB:-habitflow}?sslmode=disable
+      DB_DSN: postgres://${POSTGRES_USER:-habitflow}:${POSTGRES_PASSWORD:-habitflow}@postgres:5432/${POSTGRES_DB:-habitflow}?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,6 +37,7 @@ services:
     working_dir: /app
 
   frontend:
+    profiles: ["frontend"]
     build:
       context: ./frontend
       dockerfile: Dockerfile
