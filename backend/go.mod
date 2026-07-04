@@ -2,7 +2,11 @@ module github.com/qper/hf
 
 go 1.25.11
 
-require github.com/labstack/echo/v4 v4.15.4
+require (
+	github.com/golang-migrate/migrate/v4 v4.18.2
+	github.com/labstack/echo/v4 v4.15.4
+	github.com/lib/pq v1.8.0
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

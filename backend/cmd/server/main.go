@@ -13,6 +13,7 @@ import (
 	"github.com/qper/hf/internal/api"
 	"github.com/qper/hf/internal/config"
 	"github.com/qper/hf/internal/metrics"
+	"github.com/qper/hf/internal/migrations"
 	"github.com/qper/hf/internal/repository"
 	"github.com/qper/hf/internal/service"
 	"go.uber.org/zap"
@@ -33,6 +34,17 @@ func main() {
 	}()
 
 	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
+
+	result, err := migrations.RunWithDSN(cfg.DB.DSN)
+	if err != nil {
+		logger.Error("database migrations failed", zap.Error(err))
+		os.Exit(1)
+	}
+	if result.NoChange {
+		logger.Info("database migrations completed", zap.Bool("no_change", true), zap.Uint64("version", uint64(result.Version)))
+	} else {
+		logger.Info("database migrations completed", zap.Int("applied", result.Applied), zap.Uint64("version", uint64(result.Version)))
+	}
 
 	appMetrics := metrics.NewMetrics()
 	srv := newServer(cfg, logger, appMetrics)
