@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS current_streak(UUID, DATE);

@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS idx_users_created_at_active;
+DROP INDEX IF EXISTS idx_users_email_active;
+DROP TABLE IF EXISTS users;

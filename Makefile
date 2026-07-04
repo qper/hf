@@ -13,7 +13,7 @@ endef
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev test test-e2e lint generate build push helm-lint helm-diff deploy port-forward backup-now logs
+.PHONY: help dev test test-e2e lint generate build push helm-lint helm-diff deploy port-forward backup-now logs test-backend-db
 
 help:
 	@printf 'Available targets:\n'
@@ -38,6 +38,13 @@ dev:
 test:
 	$(call print_step,Running unit tests)
 	@cd backend && go test ./...
+
+test-backend-db:
+	$(call print_step,Starting PostgreSQL for backend tests)
+	@docker compose up -d postgres
+	@until docker compose exec -T postgres pg_isready -U habitflow -d habitflow; do sleep 2; done
+	@cd backend && DB_DSN=postgres://habitflow:habitflow@localhost:5432/habitflow?sslmode=disable go test ./...
+	@docker compose stop postgres
 
 test-e2e:
 	$(call print_step,Running end-to-end tests)
