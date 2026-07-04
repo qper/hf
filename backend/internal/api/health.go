@@ -23,6 +23,7 @@ type Handler struct {
 	healthService *service.HealthService
 	version       string
 	authService   AuthService
+	dbChecker     DBChecker
 }
 
 func NewHandler(healthService *service.HealthService, version string) *Handler {
@@ -39,7 +40,7 @@ func (h *Handler) Register(e *echo.Echo) {
 		return nil
 	})
 	e.GET("/readyz", func(c echo.Context) error {
-		h.Readyz(nil)(c.Response(), c.Request())
+		h.Readyz(h.dbChecker)(c.Response(), c.Request())
 		return nil
 	})
 	e.POST("/api/v1/auth/register", h.RegisterUser)
