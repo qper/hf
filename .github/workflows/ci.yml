@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.25']
+        go-version: ['1.26']
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.25']
+        go-version: ['1.26']
     services:
       postgres:
         image: postgres:16-alpine
@@ -211,7 +211,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.25.11'
+          go-version: '1.26.4'
       - name: Install gosec
         run: |
           mkdir -p artifacts
