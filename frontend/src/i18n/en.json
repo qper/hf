@@ -1,0 +1,15 @@
+{
+  "nav": {
+    "home": "Home",
+    "login": "Login",
+    "register": "Register"
+  },
+  "errors": {
+    "generic": "Something went wrong"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel"
+  }
+}

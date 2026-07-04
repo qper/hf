@@ -45,7 +45,9 @@ test-e2e:
 
 lint:
 	$(call print_step,Running linters)
-	@cd backend && golangci-lint run ./...
+	@rm -f "$(go env GOPATH)/bin/golangci-lint"
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+	@export PATH="$(go env GOPATH)/bin:$$PATH" && cd backend && golangci-lint run ./...
 	@cd frontend && npm run lint
 
 generate:
