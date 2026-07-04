@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +29,11 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--stop" {
+		stopServer()
+		return
+	}
+
 	cfg := config.Load()
 	cfg.Version = version
 
@@ -37,6 +45,12 @@ func main() {
 	}()
 
 	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
+
+	if err := writePIDFile(); err != nil {
+		logger.Error("failed to write pid file", zap.Error(err))
+		os.Exit(1)
+	}
+	defer removePIDFile()
 
 	result, err := migrations.RunWithDSN(cfg.DB.DSN)
 	if err != nil {
@@ -170,6 +184,66 @@ func newMetricsServer(appMetrics *metrics.Metrics) *http.Server {
 			appMetrics.Handler().ServeHTTP(w, r)
 		}),
 	}
+}
+
+func stopServer() {
+	pidFile := pidFilePath()
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "no running server pid file found at %s\n", pidFile)
+		os.Exit(0)
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid pid in %s: %v\n", pidFile, err)
+		os.Exit(1)
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to find process %d: %v\n", pid, err)
+		os.Exit(1)
+	}
+
+	if err := process.Signal(syscall.Signal(0)); err != nil {
+		fmt.Printf("server pid %d already stopped\n", pid)
+		_ = os.Remove(pidFile)
+		return
+	}
+
+	if err := process.Signal(syscall.SIGTERM); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to signal process %d: %v\n", pid, err)
+		os.Exit(1)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := process.Signal(syscall.Signal(0)); err != nil {
+			_ = os.Remove(pidFile)
+			fmt.Printf("stopped server pid %d\n", pid)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_ = process.Signal(syscall.SIGKILL)
+	_ = os.Remove(pidFile)
+	fmt.Printf("force-stopped server pid %d\n", pid)
+}
+
+func writePIDFile() error {
+	pidFile := pidFilePath()
+	pid := os.Getpid()
+	return os.WriteFile(pidFile, []byte(strconv.Itoa(pid)), 0o600)
+}
+
+func removePIDFile() {
+	_ = os.Remove(pidFilePath())
+}
+
+func pidFilePath() string {
+	return filepath.Join(os.TempDir(), "hf-server.pid")
 }
 
 func newLogger(level string) *zap.Logger {
