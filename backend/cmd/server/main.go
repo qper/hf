@@ -46,6 +46,9 @@ func main() {
 
 	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
 
+	if err := stopExistingServer(logger); err != nil {
+		logger.Warn("failed to stop existing server instance", zap.Error(err))
+	}
 	if err := writePIDFile(); err != nil {
 		logger.Error("failed to write pid file", zap.Error(err))
 		os.Exit(1)
@@ -200,36 +203,64 @@ func stopServer() {
 		os.Exit(1)
 	}
 
+	if err := stopProcessByPID(pid); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to stop process %d: %v\n", pid, err)
+		os.Exit(1)
+	}
+	_ = os.Remove(pidFile)
+	fmt.Printf("stopped server pid %d\n", pid)
+}
+
+func stopExistingServer(logger *zap.Logger) error {
+	pidFile := pidFilePath()
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		_ = os.Remove(pidFile)
+		return nil
+	}
+
+	if err := stopProcessByPID(pid); err != nil {
+		return err
+	}
+	_ = os.Remove(pidFile)
+	if logger != nil {
+		logger.Info("stopped previous server instance", zap.Int("pid", pid))
+	}
+	return nil
+}
+
+func stopProcessByPID(pid int) error {
 	process, err := os.FindProcess(pid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to find process %d: %v\n", pid, err)
-		os.Exit(1)
+		return err
 	}
 
 	if err := process.Signal(syscall.Signal(0)); err != nil {
-		fmt.Printf("server pid %d already stopped\n", pid)
-		_ = os.Remove(pidFile)
-		return
+		return nil
 	}
 
 	if err := process.Signal(syscall.SIGTERM); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to signal process %d: %v\n", pid, err)
-		os.Exit(1)
+		return err
 	}
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		if err := process.Signal(syscall.Signal(0)); err != nil {
-			_ = os.Remove(pidFile)
-			fmt.Printf("stopped server pid %d\n", pid)
-			return
+			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
 	_ = process.Signal(syscall.SIGKILL)
-	_ = os.Remove(pidFile)
-	fmt.Printf("force-stopped server pid %d\n", pid)
+	return nil
 }
 
 func writePIDFile() error {

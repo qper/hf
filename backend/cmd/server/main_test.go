@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"testing"
 	"time"
 )
@@ -20,6 +21,35 @@ func TestBuildServerRegistersHealthRoute(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+}
+
+func TestStopProcessByPID(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start child process: %v", err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+
+	if err := stopProcessByPID(cmd.Process.Pid); err != nil {
+		t.Fatalf("stop child process: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatalf("expected child process to exit with an error after signal")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("child process did not stop in time")
 	}
 }
 
