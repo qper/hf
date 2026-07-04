@@ -1,6 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { RouterProvider, createBrowserHistory, createRouter } from '@tanstack/react-router'
+import {
+  RouterProvider,
+  createBrowserHistory,
+  createRouter,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { routeTree } from './routeTree.gen'
 
@@ -32,7 +36,9 @@ export function AppRouter() {
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       {isDevelopment ? <ReactQueryDevtools initialIsOpen={false} /> : null}
-      {isDevelopment ? <TanStackRouterDevtools position="bottom-right" /> : null}
+      {isDevelopment ? (
+        <TanStackRouterDevtools position="bottom-right" />
+      ) : null}
     </QueryClientProvider>
   )
 }

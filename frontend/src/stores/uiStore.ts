@@ -10,7 +10,8 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       isSidebarOpen: true,
-      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+      toggleSidebar: () =>
+        set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
     }),
     {
       name: 'hf-ui-store',
