@@ -1,12 +1,12 @@
 -- name: CreateUser :one
-INSERT INTO users (email, password_hash)
-VALUES ($1, $2)
+INSERT INTO users (username, email, password_hash)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: GetUserByUsername :one
 SELECT *
 FROM users
-WHERE email = $1 AND deleted_at IS NULL
+WHERE username = $1 AND deleted_at IS NULL
 LIMIT 1;
 
 -- name: GetUserByEmail :one
@@ -28,12 +28,12 @@ LIMIT 1;
 
 -- name: RevokeSession :exec
 UPDATE sessions
-SET revoked_at = NOW(), updated_at = NOW()
+SET revoked_at = NOW()
 WHERE id = $1;
 
 -- name: RevokeAllUserSessions :exec
 UPDATE sessions
-SET revoked_at = NOW(), updated_at = NOW()
+SET revoked_at = NOW()
 WHERE user_id = $1 AND revoked_at IS NULL;
 
 -- name: CreateRecoveryCode :one
@@ -49,5 +49,5 @@ ORDER BY created_at DESC;
 
 -- name: MarkRecoveryCodeUsed :exec
 UPDATE recovery_codes
-SET used_at = NOW(), updated_at = NOW()
+SET used_at = NOW()
 WHERE id = $1;
