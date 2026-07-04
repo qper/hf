@@ -155,15 +155,18 @@ func newServer(cfg ...interface{}) *echo.Echo {
 	_ = repo
 
 	var authService api.AuthService
-	if db, err := sql.Open("postgres", appConfig.DB.DSN); err != nil {
+	var db *sql.DB
+	if openedDB, err := sql.Open("postgres", appConfig.DB.DSN); err != nil {
 		logger.Warn("failed to open auth database connection", zap.Error(err))
 	} else {
+		db = openedDB
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		err = db.PingContext(ctx)
 		cancel()
 		if err != nil {
 			logger.Warn("auth database unavailable, registration endpoint disabled", zap.Error(err))
 			_ = db.Close()
+			db = nil
 		} else {
 			authRepo := repository.NewAuthRepository(db)
 			authService = service.NewAuthService(authRepo)
@@ -171,6 +174,9 @@ func newServer(cfg ...interface{}) *echo.Echo {
 	}
 
 	apiHandler := api.NewHandlerWithAuth(healthService, appConfig.Version, authService)
+	if db != nil {
+		apiHandler = apiHandler.WithDBChecker(api.NewDBChecker(db))
+	}
 	apiHandler.Register(e)
 
 	logger.Info("server listening", zap.String("addr", appConfig.Addr))

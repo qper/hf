@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,6 +20,18 @@ type AuthService interface {
 	Register(ctx context.Context, req domain.RegisterRequest) (*domain.RegisterResponse, error)
 }
 
+type dbChecker struct {
+	db *sql.DB
+}
+
+func (d dbChecker) Check(ctx context.Context) error {
+	return d.db.PingContext(ctx)
+}
+
+func NewDBChecker(db *sql.DB) DBChecker {
+	return dbChecker{db: db}
+}
+
 type Handler struct {
 	healthService *service.HealthService
 	version       string
@@ -32,6 +45,11 @@ func NewHandler(healthService *service.HealthService, version string) *Handler {
 
 func NewHandlerWithAuth(healthService *service.HealthService, version string, authService AuthService) *Handler {
 	return &Handler{healthService: healthService, version: version, authService: authService}
+}
+
+func (h *Handler) WithDBChecker(dbChecker DBChecker) *Handler {
+	h.dbChecker = dbChecker
+	return h
 }
 
 func (h *Handler) Register(e *echo.Echo) {
