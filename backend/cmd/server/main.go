@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/lib/pq"
 	"github.com/qper/hf/internal/api"
 	"github.com/qper/hf/internal/config"
 	"github.com/qper/hf/internal/metrics"
@@ -129,7 +132,24 @@ func newServer(cfg ...interface{}) *echo.Echo {
 	healthService := service.NewHealthService()
 	repo := repository.NewRepository()
 	_ = repo
-	apiHandler := api.NewHandler(healthService, appConfig.Version)
+
+	var authService api.AuthService
+	if db, err := sql.Open("postgres", appConfig.DB.DSN); err != nil {
+		logger.Warn("failed to open auth database connection", zap.Error(err))
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = db.PingContext(ctx)
+		cancel()
+		if err != nil {
+			logger.Warn("auth database unavailable, registration endpoint disabled", zap.Error(err))
+			_ = db.Close()
+		} else {
+			authRepo := repository.NewAuthRepository(db)
+			authService = service.NewAuthService(authRepo)
+		}
+	}
+
+	apiHandler := api.NewHandlerWithAuth(healthService, appConfig.Version, authService)
 	apiHandler.Register(e)
 
 	logger.Info("server listening", zap.String("addr", appConfig.Addr))
