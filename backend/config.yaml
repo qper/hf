@@ -2,7 +2,7 @@ server:
   port: 8080
 
 db:
-  dsn: postgres://postgres:postgres@localhost:5432/habitflow?sslmode=disable
+  dsn: postgres://habitflow:habitflow@localhost:15432/habitflow?sslmode=disable
   poolsize: 10
 
 jwt:
