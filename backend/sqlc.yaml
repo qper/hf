@@ -1,0 +1,16 @@
+version: "2"
+cloud: {}
+server:
+  enabled: false
+sql:
+  - engine: "postgresql"
+    queries: ["queries/auth.sql", "queries/habits.sql", "queries/entries.sql", "queries/stats.sql"]
+    schema: ["../migrations/*.sql"]
+    gen:
+      go:
+        package: "db"
+        out: "internal/db"
+        emit_prepared_queries: false
+        emit_interface: false
+        emit_exact_table_names: false
+        emit_json_tags: true
