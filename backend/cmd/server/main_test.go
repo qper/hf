@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -50,6 +51,58 @@ func TestStopProcessByPID(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatalf("child process did not stop in time")
+	}
+}
+
+func TestStopPortListeners(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not available")
+	}
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen for test listener: %v", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err := listener.Close(); err != nil {
+		t.Fatalf("close temporary listener: %v", err)
+	}
+
+	cmd := exec.Command("python3", "-m", "http.server", strconv.Itoa(port), "--bind", "127.0.0.1")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start http.server: %v", err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 200*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if err := stopPortListeners(port); err != nil {
+		t.Fatalf("stop port listener: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatalf("expected child process to exit with an error after signal")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("listener did not stop in time")
 	}
 }
 

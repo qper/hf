@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -48,6 +49,9 @@ func main() {
 
 	if err := stopExistingServer(logger); err != nil {
 		logger.Warn("failed to stop existing server instance", zap.Error(err))
+	}
+	if err := stopPortListeners(8080, 9090); err != nil {
+		logger.Warn("failed to stop port listeners", zap.Error(err))
 	}
 	if err := writePIDFile(); err != nil {
 		logger.Error("failed to write pid file", zap.Error(err))
@@ -207,6 +211,7 @@ func stopServer() {
 		fmt.Fprintf(os.Stderr, "failed to stop process %d: %v\n", pid, err)
 		os.Exit(1)
 	}
+	_ = stopPortListeners(8080, 9090)
 	_ = os.Remove(pidFile)
 	fmt.Printf("stopped server pid %d\n", pid)
 }
@@ -233,6 +238,31 @@ func stopExistingServer(logger *zap.Logger) error {
 	_ = os.Remove(pidFile)
 	if logger != nil {
 		logger.Info("stopped previous server instance", zap.Int("pid", pid))
+	}
+	return nil
+}
+
+func stopPortListeners(ports ...int) error {
+	for _, port := range ports {
+		cmd := exec.Command("lsof", "-nP", "-t", fmt.Sprintf("-iTCP:%d", port), "-sTCP:LISTEN")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			continue
+		}
+
+		for _, pidLine := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+			pidLine = strings.TrimSpace(pidLine)
+			if pidLine == "" {
+				continue
+			}
+			pid, err := strconv.Atoi(pidLine)
+			if err != nil {
+				continue
+			}
+			if err := stopProcessByPID(pid); err != nil {
+				continue
+			}
+		}
 	}
 	return nil
 }
