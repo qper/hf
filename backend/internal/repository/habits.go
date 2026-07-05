@@ -79,17 +79,16 @@ func (r *HabitRepository) ListHabits(ctx context.Context, userID string, categor
 		FROM habits
 		WHERE user_id = $1 AND is_deleted = FALSE`
 	args := []any{userID}
-	argCount := 2
 
 	if categoryID != nil {
-		query += fmt.Sprintf(" AND category_id = $%d", argCount)
+		placeholder := len(args) + 1
+		query += fmt.Sprintf(" AND category_id = $%d", placeholder)
 		args = append(args, *categoryID)
-		argCount++
 	}
 	if archived != nil {
-		query += fmt.Sprintf(" AND is_archived = $%d", argCount)
+		placeholder := len(args) + 1
+		query += fmt.Sprintf(" AND is_archived = $%d", placeholder)
 		args = append(args, *archived)
-		argCount++
 	}
 	query += " ORDER BY sort_order, created_at"
 
@@ -192,52 +191,51 @@ func (r *HabitRepository) GetHabitByID(ctx context.Context, userID string, habit
 func (r *HabitRepository) UpdateHabit(ctx context.Context, userID string, habitID string, req domain.UpdateHabitRequest) (*domain.Habit, error) {
 	setParts := []string{"updated_at = NOW()"}
 	args := []any{habitID, userID}
-	argCount := 3
 
 	if req.Name != nil {
-		setParts = append(setParts, fmt.Sprintf("name = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("name = $%d", placeholder))
 		args = append(args, *req.Name)
-		argCount++
 	}
 	if req.Description != nil {
-		setParts = append(setParts, fmt.Sprintf("description = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("description = $%d", placeholder))
 		args = append(args, *req.Description)
-		argCount++
 	}
 	if req.Color != nil {
-		setParts = append(setParts, fmt.Sprintf("color = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("color = $%d", placeholder))
 		args = append(args, *req.Color)
-		argCount++
 	}
 	if req.CategoryID != nil {
-		setParts = append(setParts, fmt.Sprintf("category_id = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("category_id = $%d", placeholder))
 		args = append(args, *req.CategoryID)
-		argCount++
 	}
 	if req.Frequency != nil {
-		setParts = append(setParts, fmt.Sprintf("frequency = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("frequency = $%d", placeholder))
 		args = append(args, *req.Frequency)
-		argCount++
 	}
 	if req.TargetValue != nil {
-		setParts = append(setParts, fmt.Sprintf("target_value = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("target_value = $%d", placeholder))
 		args = append(args, *req.TargetValue)
-		argCount++
 	}
 	if req.Unit != nil {
-		setParts = append(setParts, fmt.Sprintf("unit = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("unit = $%d", placeholder))
 		args = append(args, *req.Unit)
-		argCount++
 	}
 	if req.SortOrder != nil {
-		setParts = append(setParts, fmt.Sprintf("sort_order = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("sort_order = $%d", placeholder))
 		args = append(args, *req.SortOrder)
-		argCount++
 	}
 	if req.Archived != nil {
-		setParts = append(setParts, fmt.Sprintf("is_archived = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("is_archived = $%d", placeholder))
 		args = append(args, *req.Archived)
-		argCount++
 	}
 
 	query := fmt.Sprintf(`

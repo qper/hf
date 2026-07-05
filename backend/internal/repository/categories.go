@@ -94,27 +94,26 @@ func (r *CategoryRepository) GetCategoryByID(ctx context.Context, userID string,
 func (r *CategoryRepository) UpdateCategory(ctx context.Context, userID string, categoryID string, req domain.UpdateCategoryRequest) (*domain.Category, error) {
 	setParts := []string{"updated_at = NOW()"}
 	args := []any{categoryID, userID}
-	argCount := 3
 
 	if req.Name != nil {
-		setParts = append(setParts, fmt.Sprintf("name = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("name = $%d", placeholder))
 		args = append(args, *req.Name)
-		argCount++
 	}
 	if req.Color != nil {
-		setParts = append(setParts, fmt.Sprintf("color = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("color = $%d", placeholder))
 		args = append(args, *req.Color)
-		argCount++
 	}
 	if req.Icon != nil {
-		setParts = append(setParts, fmt.Sprintf("icon = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("icon = $%d", placeholder))
 		args = append(args, *req.Icon)
-		argCount++
 	}
 	if req.SortOrder != nil {
-		setParts = append(setParts, fmt.Sprintf("sort_order = $%d", argCount))
+		placeholder := len(args) + 1
+		setParts = append(setParts, fmt.Sprintf("sort_order = $%d", placeholder))
 		args = append(args, *req.SortOrder)
-		argCount++
 	}
 
 	query := fmt.Sprintf(`
