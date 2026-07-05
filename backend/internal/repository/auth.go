@@ -83,7 +83,9 @@ func (r *AuthRepository) GetSessionByToken(ctx context.Context, token string) (*
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var sessions []service.SessionRecord
 	for rows.Next() {
