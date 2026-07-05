@@ -3,10 +3,8 @@ package service
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base32"
-	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"os"
