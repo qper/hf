@@ -305,3 +305,99 @@ func (r *HabitRepository) DeleteHabit(ctx context.Context, userID string, habitI
 	}
 	return nil
 }
+
+func (r *HabitRepository) ArchiveHabit(ctx context.Context, userID string, habitID string, archived bool) (*domain.Habit, error) {
+	var archivedAt interface{}
+	if archived {
+		archivedAt = time.Now().UTC()
+	} else {
+		archivedAt = nil
+	}
+
+	row := r.db.QueryRowContext(ctx, `
+		UPDATE habits
+		SET is_archived = $3, updated_at = NOW(), archived_at = $4
+		WHERE id = $1 AND user_id = $2 AND is_deleted = FALSE
+		RETURNING id, user_id, category_id, name, description, color, type, frequency, target_value, unit, sort_order, is_archived, is_deleted, created_at, updated_at, deleted_at
+	`, habitID, userID, archived, archivedAt)
+
+	var h domain.Habit
+	var categoryID sql.NullString
+	var description sql.NullString
+	var color sql.NullString
+	var targetValue sql.NullFloat64
+	var unit sql.NullString
+	var deletedAt sql.NullTime
+	if err := row.Scan(&h.ID, &h.UserID, &categoryID, &h.Name, &description, &color, &h.Type, &h.Frequency, &targetValue, &unit, &h.SortOrder, &h.IsArchived, &h.IsDeleted, &h.CreatedAt, &h.UpdatedAt, &deletedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if categoryID.Valid {
+		value := categoryID.String
+		h.CategoryID = &value
+	}
+	if description.Valid {
+		value := description.String
+		h.Description = &value
+	}
+	if color.Valid {
+		value := color.String
+		h.Color = &value
+	}
+	if targetValue.Valid {
+		value := targetValue.Float64
+		h.TargetValue = &value
+	}
+	if unit.Valid {
+		value := unit.String
+		h.Unit = &value
+	}
+	if deletedAt.Valid {
+		h.DeletedAt = &deletedAt.Time
+	}
+	return &h, nil
+}
+
+func (r *HabitRepository) ReorderHabits(ctx context.Context, userID string, ids []string) ([]domain.Habit, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for idx, id := range ids {
+		var exists bool
+		err := tx.QueryRowContext(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM habits WHERE id = $1 AND user_id = $2 AND is_deleted = FALSE
+			)
+		`, id, userID).Scan(&exists)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, sql.ErrNoRows
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE habits
+			SET sort_order = $1, updated_at = NOW()
+			WHERE id = $2 AND user_id = $3 AND is_deleted = FALSE
+		`, idx+1, id, userID); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return r.ListHabits(ctx, userID, nil, nil)
+}

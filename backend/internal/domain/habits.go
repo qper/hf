@@ -61,3 +61,11 @@ type UpdateHabitRequest struct {
 	SortOrder   *int     `json:"sort_order,omitempty"`
 	Archived    *bool    `json:"archived,omitempty"`
 }
+
+type ArchiveHabitRequest struct {
+	Archived bool `json:"archived"`
+}
+
+type ReorderHabitsRequest struct {
+	IDs []string `json:"ids"`
+}

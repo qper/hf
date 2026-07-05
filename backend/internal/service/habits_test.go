@@ -34,6 +34,14 @@ func (s stubHabitRepository) DeleteHabit(ctx context.Context, userID string, hab
 	return nil
 }
 
+func (s stubHabitRepository) ArchiveHabit(ctx context.Context, userID string, habitID string, archived bool) (*domain.Habit, error) {
+	return nil, nil
+}
+
+func (s stubHabitRepository) ReorderHabits(ctx context.Context, userID string, ids []string) ([]domain.Habit, error) {
+	return nil, nil
+}
+
 func TestCreateHabitRejectsInvalidPayload(t *testing.T) {
 	svc := NewHabitService(stubHabitRepository{})
 

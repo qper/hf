@@ -35,6 +35,8 @@ type HabitService interface {
 	GetByID(ctx context.Context, userID string, habitID string) (*domain.Habit, error)
 	Update(ctx context.Context, userID string, habitID string, req domain.UpdateHabitRequest) (*domain.Habit, error)
 	Delete(ctx context.Context, userID string, habitID string) error
+	Archive(ctx context.Context, userID string, habitID string, archived bool) (*domain.Habit, error)
+	Reorder(ctx context.Context, userID string, ids []string) ([]domain.Habit, error)
 }
 
 type dbChecker struct {
@@ -104,6 +106,8 @@ func (h *Handler) Register(e *echo.Echo) {
 	apiGroup.GET("/habits/:id", h.GetHabit)
 	apiGroup.PUT("/habits/:id", h.UpdateHabit)
 	apiGroup.DELETE("/habits/:id", h.DeleteHabit)
+	apiGroup.PATCH("/habits/:id/archive", h.ArchiveHabit)
+	apiGroup.PATCH("/habits/reorder", h.ReorderHabits)
 	apiGroup.GET("/me/recovery-codes", h.GetMyRecoveryCodes)
 	apiGroup.POST("/me/recovery-codes", h.RegenerateMyRecoveryCodes)
 }
@@ -338,6 +342,64 @@ func (h *Handler) DeleteHabit(c echo.Context) error {
 		}
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ArchiveHabit(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	var req domain.ArchiveHabitRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habit, err := h.habitService.Archive(c.Request().Context(), userID, c.Param("id"), req.Archived)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid habit payload"})
+		case errors.Is(err, service.ErrHabitNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not archive habit"})
+		}
+	}
+	return c.JSON(http.StatusOK, habit)
+}
+
+func (h *Handler) ReorderHabits(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	var req domain.ReorderHabitsRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habits, err := h.habitService.Reorder(c.Request().Context(), userID, req.IDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid habit payload"})
+		case errors.Is(err, service.ErrHabitForbidden):
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "forbidden"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not reorder habits"})
+		}
+	}
+	return c.JSON(http.StatusOK, habits)
 }
 
 func (h *Handler) RecoverUser(c echo.Context) error {

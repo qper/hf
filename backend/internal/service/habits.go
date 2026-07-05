@@ -22,6 +22,8 @@ type HabitRepository interface {
 	GetHabitByID(ctx context.Context, userID string, habitID string) (*domain.Habit, error)
 	UpdateHabit(ctx context.Context, userID string, habitID string, req domain.UpdateHabitRequest) (*domain.Habit, error)
 	DeleteHabit(ctx context.Context, userID string, habitID string) error
+	ArchiveHabit(ctx context.Context, userID string, habitID string, archived bool) (*domain.Habit, error)
+	ReorderHabits(ctx context.Context, userID string, ids []string) ([]domain.Habit, error)
 }
 
 type HabitService struct {
@@ -79,6 +81,40 @@ func (s *HabitService) Delete(ctx context.Context, userID string, habitID string
 		}
 	}
 	return err
+}
+
+func (s *HabitService) Archive(ctx context.Context, userID string, habitID string, archived bool) (*domain.Habit, error) {
+	if strings.TrimSpace(habitID) == "" {
+		return nil, ErrHabitValidation
+	}
+	habit, err := s.repo.ArchiveHabit(ctx, userID, habitID, archived)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrHabitNotFound
+		}
+		return nil, err
+	}
+	if habit == nil {
+		return nil, ErrHabitNotFound
+	}
+	return habit, nil
+}
+
+func (s *HabitService) Reorder(ctx context.Context, userID string, ids []string) ([]domain.Habit, error) {
+	if len(ids) == 0 {
+		return nil, ErrHabitValidation
+	}
+	habits, err := s.repo.ReorderHabits(ctx, userID, ids)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrHabitForbidden
+		}
+		return nil, err
+	}
+	if habits == nil {
+		return nil, ErrHabitForbidden
+	}
+	return habits, nil
 }
 
 func validateCreateHabit(req domain.CreateHabitRequest) error {
