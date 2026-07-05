@@ -29,6 +29,25 @@ type AuthService interface {
 	RegenerateRecoveryCodes(ctx context.Context, userID, password string) (*domain.RecoveryCodeRegenerationResponse, error)
 }
 
+type HabitService interface {
+	Create(ctx context.Context, userID string, req domain.CreateHabitRequest) (*domain.Habit, error)
+	List(ctx context.Context, userID string, categoryID *string, archived *bool) ([]domain.Habit, error)
+	GetByID(ctx context.Context, userID string, habitID string) (*domain.Habit, error)
+	Update(ctx context.Context, userID string, habitID string, req domain.UpdateHabitRequest) (*domain.Habit, error)
+	Delete(ctx context.Context, userID string, habitID string) error
+	Archive(ctx context.Context, userID string, habitID string, archived bool) (*domain.Habit, error)
+	Reorder(ctx context.Context, userID string, ids []string) ([]domain.Habit, error)
+}
+
+type CategoryService interface {
+	Create(ctx context.Context, userID string, req domain.CreateCategoryRequest) (*domain.Category, error)
+	List(ctx context.Context, userID string) ([]domain.Category, error)
+	GetByID(ctx context.Context, userID string, categoryID string) (*domain.Category, error)
+	Update(ctx context.Context, userID string, categoryID string, req domain.UpdateCategoryRequest) (*domain.Category, error)
+	Delete(ctx context.Context, userID string, categoryID string) error
+	Reorder(ctx context.Context, userID string, ids []string) ([]domain.Category, error)
+}
+
 type dbChecker struct {
 	db *sql.DB
 }
@@ -42,10 +61,12 @@ func NewDBChecker(db *sql.DB) DBChecker {
 }
 
 type Handler struct {
-	healthService *service.HealthService
-	version       string
-	authService   AuthService
-	dbChecker     DBChecker
+	healthService   *service.HealthService
+	version         string
+	authService     AuthService
+	habitService    HabitService
+	categoryService CategoryService
+	dbChecker       DBChecker
 }
 
 func NewHandler(healthService *service.HealthService, version string) *Handler {
@@ -54,6 +75,18 @@ func NewHandler(healthService *service.HealthService, version string) *Handler {
 
 func NewHandlerWithAuth(healthService *service.HealthService, version string, authService AuthService) *Handler {
 	return &Handler{healthService: healthService, version: version, authService: authService}
+}
+
+func NewHandlerWithHabit(healthService *service.HealthService, version string, authService AuthService, habitService HabitService) *Handler {
+	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService}
+}
+
+func NewHandlerWithCategory(healthService *service.HealthService, version string, authService AuthService, categoryService CategoryService) *Handler {
+	return &Handler{healthService: healthService, version: version, authService: authService, categoryService: categoryService}
+}
+
+func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService) *Handler {
+	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService}
 }
 
 func (h *Handler) WithDBChecker(dbChecker DBChecker) *Handler {
@@ -86,9 +119,19 @@ func (h *Handler) Register(e *echo.Echo) {
 
 	apiGroup := e.Group("/api/v1")
 	apiGroup.Use(CORSMiddleware, CSPMiddleware, JWTMiddleware())
-	apiGroup.GET("/habits", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
+	apiGroup.GET("/habits", h.ListHabits)
+	apiGroup.POST("/habits", h.CreateHabit)
+	apiGroup.GET("/habits/:id", h.GetHabit)
+	apiGroup.PUT("/habits/:id", h.UpdateHabit)
+	apiGroup.DELETE("/habits/:id", h.DeleteHabit)
+	apiGroup.PATCH("/habits/:id/archive", h.ArchiveHabit)
+	apiGroup.PATCH("/habits/reorder", h.ReorderHabits)
+	apiGroup.GET("/categories", h.ListCategories)
+	apiGroup.POST("/categories", h.CreateCategory)
+	apiGroup.GET("/categories/:id", h.GetCategory)
+	apiGroup.PUT("/categories/:id", h.UpdateCategory)
+	apiGroup.DELETE("/categories/:id", h.DeleteCategory)
+	apiGroup.PATCH("/categories/reorder", h.ReorderCategories)
 	apiGroup.GET("/me/recovery-codes", h.GetMyRecoveryCodes)
 	apiGroup.POST("/me/recovery-codes", h.RegenerateMyRecoveryCodes)
 }
@@ -196,6 +239,339 @@ func (h *Handler) LogoutAllUser(c echo.Context) error {
 	}
 	c.SetCookie(expireCookie("refresh_token"))
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) CreateHabit(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	var req domain.CreateHabitRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habit, err := h.habitService.Create(c.Request().Context(), userID, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid habit payload"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not create habit"})
+		}
+	}
+	return c.JSON(http.StatusCreated, habit)
+}
+
+func (h *Handler) ListHabits(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	var categoryID *string
+	if value := c.QueryParam("category"); strings.TrimSpace(value) != "" {
+		categoryID = &value
+	}
+	var archived *bool
+	if value := c.QueryParam("archived"); strings.TrimSpace(value) != "" {
+		parsed := value == "true"
+		archived = &parsed
+	}
+
+	habits, err := h.habitService.List(c.Request().Context(), userID, categoryID, archived)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not list habits"})
+	}
+	return c.JSON(http.StatusOK, habits)
+}
+
+func (h *Handler) GetHabit(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habit, err := h.habitService.GetByID(c.Request().Context(), userID, c.Param("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not fetch habit"})
+		}
+	}
+	return c.JSON(http.StatusOK, habit)
+}
+
+func (h *Handler) UpdateHabit(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	var req domain.UpdateHabitRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habit, err := h.habitService.Update(c.Request().Context(), userID, c.Param("id"), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid habit payload"})
+		case errors.Is(err, service.ErrHabitNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not update habit"})
+		}
+	}
+	return c.JSON(http.StatusOK, habit)
+}
+
+func (h *Handler) DeleteHabit(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	err := h.habitService.Delete(c.Request().Context(), userID, c.Param("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not delete habit"})
+		}
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ArchiveHabit(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	var req domain.ArchiveHabitRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habit, err := h.habitService.Archive(c.Request().Context(), userID, c.Param("id"), req.Archived)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid habit payload"})
+		case errors.Is(err, service.ErrHabitNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not archive habit"})
+		}
+	}
+	return c.JSON(http.StatusOK, habit)
+}
+
+func (h *Handler) ReorderHabits(c echo.Context) error {
+	if h.habitService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})
+	}
+
+	var req domain.ReorderHabitsRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	habits, err := h.habitService.Reorder(c.Request().Context(), userID, req.IDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrHabitValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid habit payload"})
+		case errors.Is(err, service.ErrHabitForbidden):
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "forbidden"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not reorder habits"})
+		}
+	}
+	return c.JSON(http.StatusOK, habits)
+}
+
+func (h *Handler) CreateCategory(c echo.Context) error {
+	if h.categoryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "category service unavailable"})
+	}
+
+	var req domain.CreateCategoryRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	category, err := h.categoryService.Create(c.Request().Context(), userID, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCategoryValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid category payload"})
+		case errors.Is(err, service.ErrCategoryConflict):
+			return c.JSON(http.StatusConflict, map[string]string{"error": "category already exists"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not create category"})
+		}
+	}
+	return c.JSON(http.StatusCreated, category)
+}
+
+func (h *Handler) ListCategories(c echo.Context) error {
+	if h.categoryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "category service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	categories, err := h.categoryService.List(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not list categories"})
+	}
+	return c.JSON(http.StatusOK, categories)
+}
+
+func (h *Handler) GetCategory(c echo.Context) error {
+	if h.categoryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "category service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	category, err := h.categoryService.GetByID(c.Request().Context(), userID, c.Param("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCategoryNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "category not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not fetch category"})
+		}
+	}
+	return c.JSON(http.StatusOK, category)
+}
+
+func (h *Handler) UpdateCategory(c echo.Context) error {
+	if h.categoryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "category service unavailable"})
+	}
+
+	var req domain.UpdateCategoryRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	category, err := h.categoryService.Update(c.Request().Context(), userID, c.Param("id"), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCategoryValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid category payload"})
+		case errors.Is(err, service.ErrCategoryNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "category not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not update category"})
+		}
+	}
+	return c.JSON(http.StatusOK, category)
+}
+
+func (h *Handler) DeleteCategory(c echo.Context) error {
+	if h.categoryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "category service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	err := h.categoryService.Delete(c.Request().Context(), userID, c.Param("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCategoryNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "category not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not delete category"})
+		}
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) ReorderCategories(c echo.Context) error {
+	if h.categoryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "category service unavailable"})
+	}
+
+	var req domain.ReorderCategoriesRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	categories, err := h.categoryService.Reorder(c.Request().Context(), userID, req.IDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCategoryValidation):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid category payload"})
+		case errors.Is(err, service.ErrCategoryForbidden):
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "forbidden"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not reorder categories"})
+		}
+	}
+	return c.JSON(http.StatusOK, categories)
 }
 
 func (h *Handler) RecoverUser(c echo.Context) error {
