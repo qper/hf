@@ -18,6 +18,7 @@ type DBChecker interface {
 
 type AuthService interface {
 	Register(ctx context.Context, req domain.RegisterRequest) (*domain.RegisterResponse, error)
+	Login(ctx context.Context, req domain.LoginRequest) (*domain.LoginResponse, error)
 }
 
 type dbChecker struct {
@@ -62,6 +63,7 @@ func (h *Handler) Register(e *echo.Echo) {
 		return nil
 	})
 	e.POST("/api/v1/auth/register", h.RegisterUser)
+	e.POST("/auth/login", h.LoginUser)
 }
 
 func (h *Handler) RegisterUser(c echo.Context) error {
@@ -87,6 +89,38 @@ func (h *Handler) RegisterUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, resp)
+}
+
+func (h *Handler) LoginUser(c echo.Context) error {
+	var req domain.LoginRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	if h.authService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "auth service unavailable"})
+	}
+
+	resp, err := h.authService.Login(c.Request().Context(), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUnauthorized):
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "login failed"})
+		}
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    resp.RefreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) Healthz(w http.ResponseWriter, r *http.Request) {

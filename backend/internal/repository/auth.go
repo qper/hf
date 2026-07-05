@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/qper/hf/internal/domain"
 )
@@ -42,6 +43,32 @@ func (r *AuthRepository) UserExists(ctx context.Context, username, email string)
 		return false, err
 	}
 	return exists, nil
+}
+
+func (r *AuthRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, username, email, password_hash
+		FROM users
+		WHERE username = $1 AND deleted_at IS NULL
+		LIMIT 1
+	`, username)
+
+	var user domain.User
+	if err := row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *AuthRepository) CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO sessions (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)
+	`, userID, tokenHash, expiresAt)
+	return err
 }
 
 func (r *AuthRepository) CreateRecoveryCodes(ctx context.Context, userID string, codeHashes []string) error {

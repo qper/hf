@@ -13,8 +13,10 @@ import (
 )
 
 type stubAuthService struct {
-	resp *domain.RegisterResponse
-	err  error
+	resp      *domain.RegisterResponse
+	loginResp *domain.LoginResponse
+	loginErr  error
+	err       error
 }
 
 func (s stubAuthService) Register(ctx context.Context, req domain.RegisterRequest) (*domain.RegisterResponse, error) {
@@ -22,6 +24,13 @@ func (s stubAuthService) Register(ctx context.Context, req domain.RegisterReques
 		return nil, s.err
 	}
 	return s.resp, nil
+}
+
+func (s stubAuthService) Login(ctx context.Context, req domain.LoginRequest) (*domain.LoginResponse, error) {
+	if s.loginErr != nil {
+		return nil, s.loginErr
+	}
+	return s.loginResp, nil
 }
 
 func TestRegisterEndpointReturnsCreated(t *testing.T) {
@@ -75,5 +84,32 @@ func TestRegisterEndpointReturnsUnprocessableEntity(t *testing.T) {
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected status %d, got %d", http.StatusUnprocessableEntity, rec.Code)
+	}
+}
+
+func TestLoginEndpointReturnsTokensAndCookie(t *testing.T) {
+	h := NewHandler(service.NewHealthService(), "1.0.0")
+	h.authService = stubAuthService{loginResp: &domain.LoginResponse{AccessToken: "token", RefreshToken: "refresh", TokenType: "Bearer", ExpiresIn: 900}}
+
+	e := echo.New()
+	h.Register(e)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"alice","password":"StrongPass1"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+	if rec.Header().Get("Set-Cookie") == "" {
+		t.Fatalf("expected refresh token cookie to be set")
+	}
+	if !strings.Contains(rec.Header().Get("Set-Cookie"), "HttpOnly") || !strings.Contains(rec.Header().Get("Set-Cookie"), "Secure") || !strings.Contains(rec.Header().Get("Set-Cookie"), "SameSite=Strict") {
+		t.Fatalf("expected refresh cookie attributes to be set, got %q", rec.Header().Get("Set-Cookie"))
+	}
+	if !strings.Contains(rec.Body.String(), "\"access_token\":\"token\"") {
+		t.Fatalf("expected access token in JSON body")
 	}
 }
