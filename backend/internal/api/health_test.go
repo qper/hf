@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/labstack/echo/v4"
 	"github.com/qper/hf/internal/service"
 )
 
@@ -40,5 +41,19 @@ func TestReadyz_DBDown(t *testing.T) {
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d", rec.Code)
+	}
+}
+
+func TestRegisterReadyzUsesDBChecker(t *testing.T) {
+	h := &Handler{healthService: service.NewHealthService(), version: "1.0.0", dbChecker: stubDBChecker{}}
+	e := echo.New()
+	h.Register(e)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
 	}
 }

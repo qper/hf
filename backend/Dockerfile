@@ -1,7 +1,11 @@
-FROM golang:1.25.11-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /src
-COPY go.mod ./
-COPY cmd/server ./cmd/server
+COPY go.mod go.sum ./
+COPY cmd ./cmd
+COPY internal ./internal
+COPY queries ./queries
+COPY sqlc.yaml ./
+COPY tools.go ./
 RUN go build -o /out/server ./cmd/server
 
 FROM alpine:3.20

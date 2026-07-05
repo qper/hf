@@ -2,14 +2,21 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/lib/pq"
 	"github.com/qper/hf/internal/api"
 	"github.com/qper/hf/internal/config"
 	"github.com/qper/hf/internal/metrics"
@@ -23,6 +30,11 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--stop" {
+		stopServer()
+		return
+	}
+
 	cfg := config.Load()
 	cfg.Version = version
 
@@ -34,6 +46,18 @@ func main() {
 	}()
 
 	logger.Debug("configuration loaded", zap.String("log_level", cfg.LogLevel), zap.Int("server_port", cfg.Server.Port), zap.String("addr", cfg.Addr))
+
+	if err := stopExistingServer(logger); err != nil {
+		logger.Warn("failed to stop existing server instance", zap.Error(err))
+	}
+	if err := stopPortListeners(8080, 9090); err != nil {
+		logger.Warn("failed to stop port listeners", zap.Error(err))
+	}
+	if err := writePIDFile(); err != nil {
+		logger.Error("failed to write pid file", zap.Error(err))
+		os.Exit(1)
+	}
+	defer removePIDFile()
 
 	result, err := migrations.RunWithDSN(cfg.DB.DSN)
 	if err != nil {
@@ -129,7 +153,30 @@ func newServer(cfg ...interface{}) *echo.Echo {
 	healthService := service.NewHealthService()
 	repo := repository.NewRepository()
 	_ = repo
-	apiHandler := api.NewHandler(healthService, appConfig.Version)
+
+	var authService api.AuthService
+	var db *sql.DB
+	if openedDB, err := sql.Open("postgres", appConfig.DB.DSN); err != nil {
+		logger.Warn("failed to open auth database connection", zap.Error(err))
+	} else {
+		db = openedDB
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = db.PingContext(ctx)
+		cancel()
+		if err != nil {
+			logger.Warn("auth database unavailable, registration endpoint disabled", zap.Error(err))
+			_ = db.Close()
+			db = nil
+		} else {
+			authRepo := repository.NewAuthRepository(db)
+			authService = service.NewAuthService(authRepo)
+		}
+	}
+
+	apiHandler := api.NewHandlerWithAuth(healthService, appConfig.Version, authService)
+	if db != nil {
+		apiHandler = apiHandler.WithDBChecker(api.NewDBChecker(db))
+	}
 	apiHandler.Register(e)
 
 	logger.Info("server listening", zap.String("addr", appConfig.Addr))
@@ -150,6 +197,120 @@ func newMetricsServer(appMetrics *metrics.Metrics) *http.Server {
 			appMetrics.Handler().ServeHTTP(w, r)
 		}),
 	}
+}
+
+func stopServer() {
+	pidFile := pidFilePath()
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "no running server pid file found at %s\n", pidFile)
+		os.Exit(0)
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid pid in %s: %v\n", pidFile, err)
+		os.Exit(1)
+	}
+
+	if err := stopProcessByPID(pid); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to stop process %d: %v\n", pid, err)
+		os.Exit(1)
+	}
+	_ = stopPortListeners(8080, 9090)
+	_ = os.Remove(pidFile)
+	fmt.Printf("stopped server pid %d\n", pid)
+}
+
+func stopExistingServer(logger *zap.Logger) error {
+	pidFile := pidFilePath()
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		_ = os.Remove(pidFile)
+		return nil
+	}
+
+	if err := stopProcessByPID(pid); err != nil {
+		return err
+	}
+	_ = os.Remove(pidFile)
+	if logger != nil {
+		logger.Info("stopped previous server instance", zap.Int("pid", pid))
+	}
+	return nil
+}
+
+func stopPortListeners(ports ...int) error {
+	for _, port := range ports {
+		cmd := exec.Command("lsof", "-nP", "-t", fmt.Sprintf("-iTCP:%d", port), "-sTCP:LISTEN")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			continue
+		}
+
+		for _, pidLine := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+			pidLine = strings.TrimSpace(pidLine)
+			if pidLine == "" {
+				continue
+			}
+			pid, err := strconv.Atoi(pidLine)
+			if err != nil {
+				continue
+			}
+			if err := stopProcessByPID(pid); err != nil {
+				continue
+			}
+		}
+	}
+	return nil
+}
+
+func stopProcessByPID(pid int) error {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+
+	if err := process.Signal(syscall.Signal(0)); err != nil {
+		return nil
+	}
+
+	if err := process.Signal(syscall.SIGTERM); err != nil {
+		return err
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := process.Signal(syscall.Signal(0)); err != nil {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_ = process.Signal(syscall.SIGKILL)
+	return nil
+}
+
+func writePIDFile() error {
+	pidFile := pidFilePath()
+	pid := os.Getpid()
+	return os.WriteFile(pidFile, []byte(strconv.Itoa(pid)), 0o600)
+}
+
+func removePIDFile() {
+	_ = os.Remove(pidFilePath())
+}
+
+func pidFilePath() string {
+	return filepath.Join(os.TempDir(), "hf-server.pid")
 }
 
 func newLogger(level string) *zap.Logger {
