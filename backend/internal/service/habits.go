@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -57,11 +58,27 @@ func (s *HabitService) Update(ctx context.Context, userID string, habitID string
 	if req.Type != "" {
 		return nil, ErrHabitValidation
 	}
-	return s.repo.UpdateHabit(ctx, userID, habitID, req)
+	habit, err := s.repo.UpdateHabit(ctx, userID, habitID, req)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrHabitNotFound
+		}
+		return nil, err
+	}
+	if habit == nil {
+		return nil, ErrHabitNotFound
+	}
+	return habit, nil
 }
 
 func (s *HabitService) Delete(ctx context.Context, userID string, habitID string) error {
-	return s.repo.DeleteHabit(ctx, userID, habitID)
+	err := s.repo.DeleteHabit(ctx, userID, habitID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrHabitNotFound
+		}
+	}
+	return err
 }
 
 func validateCreateHabit(req domain.CreateHabitRequest) error {
