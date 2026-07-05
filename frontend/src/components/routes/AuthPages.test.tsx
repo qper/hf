@@ -1,8 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { routeTree } from '@/routeTree.gen'
 
 import { LoginPage } from '@/components/routes/LoginPage'
 import { RegisterPage } from '@/components/routes/RegisterPage'
+
+const router = createRouter({
+  routeTree,
+  history: createMemoryHistory({ initialEntries: ['/login'] }),
+})
+
+function renderWithRouter(node: JSX.Element) {
+  return render(<RouterProvider router={router}>{node}</RouterProvider>)
+}
 
 vi.stubGlobal('fetch', vi.fn(async () => ({
   ok: false,
