@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/qper/hf/internal/domain"
@@ -66,11 +67,23 @@ func (h *Handler) Register(e *echo.Echo) {
 		h.Readyz(h.dbChecker)(c.Response(), c.Request())
 		return nil
 	})
+	// auth routes with rate limiter, CORS and CSP
+	authGroup := e.Group("/auth")
+	authGroup.Use(NewRateLimiter(5, 15*time.Minute))
+	authGroup.Use(CORSMiddleware)
+	authGroup.Use(CSPMiddleware)
+	authGroup.POST("/login", h.LoginUser)
+	authGroup.POST("/refresh", h.RefreshUser)
+	authGroup.POST("/logout", h.LogoutUser)
+	authGroup.POST("/logout-all", h.LogoutAllUser)
+
+	// registration stays under /api/v1 and is public
 	e.POST("/api/v1/auth/register", h.RegisterUser)
-	e.POST("/auth/login", h.LoginUser)
-	e.POST("/auth/refresh", h.RefreshUser)
-	e.POST("/auth/logout", h.LogoutUser)
-	e.POST("/auth/logout-all", h.LogoutAllUser)
+
+	// example protected API route under /api/v1 to enforce JWT middleware
+	e.GET("/api/v1/habits", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}, CORSMiddleware, CSPMiddleware, JWTMiddleware())
 }
 
 func (h *Handler) RegisterUser(c echo.Context) error {
