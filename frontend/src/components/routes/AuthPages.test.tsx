@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
+import App from '@/App'
 
-import { LoginPage } from '@/components/routes/LoginPage'
-import { RegisterPage } from '@/components/routes/RegisterPage'
+function renderWithRouter(initialEntry: string) {
+  window.history.pushState({}, '', initialEntry)
+  return render(<App />)
+}
 
 vi.stubGlobal('fetch', vi.fn(async () => ({
   ok: false,
@@ -10,8 +13,13 @@ vi.stubGlobal('fetch', vi.fn(async () => ({
 } as Response)))
 
 describe('Auth pages', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
   it('shows error on wrong password', async () => {
-    render(<LoginPage />)
+    renderWithRouter('/login')
+
+    await screen.findByLabelText(/username/i)
 
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
@@ -25,7 +33,9 @@ describe('Auth pages', () => {
   })
 
   it('shows inline error for password mismatch on register page', async () => {
-    render(<RegisterPage />)
+    renderWithRouter('/register')
+
+    await screen.findByLabelText(/confirm password/i)
 
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
