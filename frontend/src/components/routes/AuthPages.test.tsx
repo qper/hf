@@ -1,22 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
-import { routeTree } from '@/routeTree.gen'
 
 import { LoginPage } from '@/components/routes/LoginPage'
 import { RegisterPage } from '@/components/routes/RegisterPage'
-
-function createTestRouter(initialEntry: string) {
-  return createRouter({
-    routeTree,
-    history: createMemoryHistory({ initialEntries: [initialEntry] }),
-  })
-}
-
-function renderWithRouter(node: JSX.Element, initialEntry: string) {
-  const router = createTestRouter(initialEntry)
-  return render(<RouterProvider router={router}>{node}</RouterProvider>)
-}
 
 vi.stubGlobal('fetch', vi.fn(async () => ({
   ok: false,
@@ -25,7 +11,7 @@ vi.stubGlobal('fetch', vi.fn(async () => ({
 
 describe('Auth pages', () => {
   it('shows error on wrong password', async () => {
-    renderWithRouter(<LoginPage />, '/login')
+    render(<LoginPage />)
 
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
@@ -39,7 +25,7 @@ describe('Auth pages', () => {
   })
 
   it('shows inline error for password mismatch on register page', async () => {
-    renderWithRouter(<RegisterPage />, '/register')
+    render(<RegisterPage />)
 
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
