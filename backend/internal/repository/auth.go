@@ -75,17 +75,21 @@ func (r *AuthRepository) CreateSession(ctx context.Context, userID, tokenHash st
 }
 
 func (r *AuthRepository) GetSessionByToken(ctx context.Context, token string) (*service.SessionRecord, error) {
-	row := r.db.QueryRowContext(ctx, `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, token_hash, expires_at, revoked_at
 		FROM sessions
 		ORDER BY created_at DESC
 	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	var sessions []service.SessionRecord
-	for row.Next() {
+	for rows.Next() {
 		var session service.SessionRecord
 		var revokedAt sql.NullTime
-		if err := row.Scan(&session.ID, &session.UserID, &session.TokenHash, &session.ExpiresAt, &revokedAt); err != nil {
+		if err := rows.Scan(&session.ID, &session.UserID, &session.TokenHash, &session.ExpiresAt, &revokedAt); err != nil {
 			return nil, err
 		}
 		if revokedAt.Valid {
@@ -93,7 +97,7 @@ func (r *AuthRepository) GetSessionByToken(ctx context.Context, token string) (*
 		}
 		sessions = append(sessions, session)
 	}
-	if err := row.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
