@@ -37,7 +37,8 @@ test('auto-refresh after token expiry (mocked)', async ({ page, context }) => {
     })
   })
 
-  await page.goto('/test-auth')
+  const base = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'
+  await page.goto(`${base}/test-auth`)
 
   // perform login via the test UI
   await page.click('#login-btn')
