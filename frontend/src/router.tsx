@@ -34,11 +34,12 @@ export function AppRouter() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      {isDevelopment ? <ReactQueryDevtools initialIsOpen={false} /> : null}
-      {isDevelopment ? (
-        <TanStackRouterDevtools position="bottom-right" />
-      ) : null}
+      <RouterProvider router={router}>
+        {isDevelopment ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+        {isDevelopment ? (
+          <TanStackRouterDevtools position="bottom-right" />
+        ) : null}
+      </RouterProvider>
     </QueryClientProvider>
   )
 }
