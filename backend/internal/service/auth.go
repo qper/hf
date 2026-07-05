@@ -36,6 +36,10 @@ type AuthRepository interface {
 	UserExists(ctx context.Context, username, email string) (bool, error)
 	CreateRecoveryCodes(ctx context.Context, userID string, codeHashes []string) error
 	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
+	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
+	GetUnusedRecoveryCodes(ctx context.Context, userID string) ([]RecoveryCodeRecord, error)
+	MarkRecoveryCodeUsed(ctx context.Context, recoveryCodeID string) error
+	DeleteRecoveryCodes(ctx context.Context, userID string) error
 	CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
 	GetSessionByToken(ctx context.Context, token string) (*SessionRecord, error)
 	RevokeSession(ctx context.Context, sessionID string) error
@@ -49,6 +53,11 @@ type SessionRecord struct {
 	TokenHash string
 	ExpiresAt time.Time
 	RevokedAt *time.Time
+}
+
+type RecoveryCodeRecord struct {
+	ID       string
+	CodeHash string
 }
 
 func NewAuthService(repo AuthRepository) *AuthService {
@@ -78,16 +87,9 @@ func (s *AuthService) Register(ctx context.Context, req domain.RegisterRequest) 
 		return nil, err
 	}
 
-	codes := make([]string, 0, 8)
-	codeHashes := make([]string, 0, 8)
-	for i := 0; i < 8; i++ {
-		code := generateRecoveryCode()
-		codes = append(codes, code)
-		hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
-		if err != nil {
-			return nil, err
-		}
-		codeHashes = append(codeHashes, string(hash))
+	codes, codeHashes, err := s.generateRecoveryCodes()
+	if err != nil {
+		return nil, err
 	}
 
 	if err := s.repo.CreateRecoveryCodes(ctx, user.ID, codeHashes); err != nil {
@@ -193,6 +195,127 @@ func (s *AuthService) LogoutAll(ctx context.Context, refreshToken string) error 
 		return ErrSession
 	}
 	return s.repo.RevokeAllSessions(ctx, session.UserID)
+}
+
+func (s *AuthService) RecoverWithRecoveryCode(ctx context.Context, req domain.RecoverRequest) (*domain.RecoverResponse, error) {
+	username := strings.TrimSpace(req.Username)
+	if username == "" || strings.TrimSpace(req.RecoveryCode) == "" {
+		return nil, ErrUnauthorized
+	}
+
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUnauthorized
+	}
+
+	unusedCodes, err := s.repo.GetUnusedRecoveryCodes(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, code := range unusedCodes {
+		if bcrypt.CompareHashAndPassword([]byte(code.CodeHash), []byte(req.RecoveryCode)) == nil {
+			if err := s.repo.MarkRecoveryCodeUsed(ctx, code.ID); err != nil {
+				return nil, err
+			}
+
+			accessToken, err := s.createAccessTokenWithMustChangePassword(user.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			return &domain.RecoverResponse{AccessToken: accessToken, TokenType: "Bearer", ExpiresIn: 900}, nil
+		}
+	}
+
+	return nil, ErrUnauthorized
+}
+
+func (s *AuthService) GetRecoveryCodeCount(ctx context.Context, userID string) (int, error) {
+	codes, err := s.repo.GetUnusedRecoveryCodes(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	return len(codes), nil
+}
+
+func (s *AuthService) RegenerateRecoveryCodes(ctx context.Context, userID, password string) (*domain.RecoveryCodeRegenerationResponse, error) {
+	if strings.TrimSpace(password) == "" {
+		return nil, ErrUnauthorized
+	}
+
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUnauthorized
+	}
+
+	if _, err := argon2id.ComparePasswordAndHash(password, user.PasswordHash); err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	if err := s.repo.DeleteRecoveryCodes(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	codes, codeHashes, err := s.generateRecoveryCodes()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.CreateRecoveryCodes(ctx, userID, codeHashes); err != nil {
+		return nil, err
+	}
+
+	return &domain.RecoveryCodeRegenerationResponse{RecoveryCodes: codes}, nil
+}
+
+func (s *AuthService) createAccessTokenWithMustChangePassword(userID string) (string, error) {
+	privateKeyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
+	if privateKeyPath == "" {
+		privateKeyPath = "secrets/jwt.key"
+	}
+
+	privateKeyPEM, err := os.ReadFile(privateKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("read private key: %w", err)
+	}
+	block, _ := pem.Decode(privateKeyPEM)
+	if block == nil {
+		return "", fmt.Errorf("decode private key")
+	}
+	parsedKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("parse private key: %w", err)
+	}
+
+	claims := jwt.MapClaims{
+		"sub":                  userID,
+		"iat":                  time.Now().UTC().Unix(),
+		"exp":                  time.Now().UTC().Add(15 * time.Minute).Unix(),
+		"must_change_password": true,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	return token.SignedString(parsedKey)
+}
+
+func (s *AuthService) generateRecoveryCodes() ([]string, []string, error) {
+	codes := make([]string, 0, 8)
+	codeHashes := make([]string, 0, 8)
+	for i := 0; i < 8; i++ {
+		code := generateRecoveryCode()
+		hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, nil, err
+		}
+		codes = append(codes, code)
+		codeHashes = append(codeHashes, string(hash))
+	}
+	return codes, codeHashes, nil
 }
 
 func (s *AuthService) createAccessToken(userID string) (string, error) {

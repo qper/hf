@@ -16,6 +16,8 @@ type stubAuthService struct {
 	resp      *domain.RegisterResponse
 	loginResp *domain.LoginResponse
 	loginErr  error
+	count     int
+	regenResp *domain.RecoveryCodeRegenerationResponse
 	err       error
 }
 
@@ -43,6 +45,18 @@ func (s stubAuthService) Logout(ctx context.Context, refreshToken string) error 
 
 func (s stubAuthService) LogoutAll(ctx context.Context, refreshToken string) error {
 	return nil
+}
+
+func (s stubAuthService) RecoverWithRecoveryCode(ctx context.Context, req domain.RecoverRequest) (*domain.RecoverResponse, error) {
+	return nil, nil
+}
+
+func (s stubAuthService) GetRecoveryCodeCount(ctx context.Context, userID string) (int, error) {
+	return s.count, nil
+}
+
+func (s stubAuthService) RegenerateRecoveryCodes(ctx context.Context, userID, password string) (*domain.RecoveryCodeRegenerationResponse, error) {
+	return s.regenResp, nil
 }
 
 func TestRegisterEndpointReturnsCreated(t *testing.T) {

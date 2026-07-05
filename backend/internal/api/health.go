@@ -24,6 +24,9 @@ type AuthService interface {
 	Refresh(ctx context.Context, refreshToken string) (*domain.RefreshResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	LogoutAll(ctx context.Context, refreshToken string) error
+	RecoverWithRecoveryCode(ctx context.Context, req domain.RecoverRequest) (*domain.RecoverResponse, error)
+	GetRecoveryCodeCount(ctx context.Context, userID string) (int, error)
+	RegenerateRecoveryCodes(ctx context.Context, userID, password string) (*domain.RecoveryCodeRegenerationResponse, error)
 }
 
 type dbChecker struct {
@@ -77,13 +80,17 @@ func (h *Handler) Register(e *echo.Echo) {
 	authGroup.POST("/logout", h.LogoutUser)
 	authGroup.POST("/logout-all", h.LogoutAllUser)
 
-	// registration stays under /api/v1 and is public
+	// registration and recovery are public endpoints under /api/v1/auth
 	e.POST("/api/v1/auth/register", h.RegisterUser)
+	e.POST("/api/v1/auth/recover", h.RecoverUser, CORSMiddleware, CSPMiddleware)
 
-	// example protected API route under /api/v1 to enforce JWT middleware
-	e.GET("/api/v1/habits", func(c echo.Context) error {
+	apiGroup := e.Group("/api/v1")
+	apiGroup.Use(CORSMiddleware, CSPMiddleware, JWTMiddleware())
+	apiGroup.GET("/habits", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	}, CORSMiddleware, CSPMiddleware, JWTMiddleware())
+	})
+	apiGroup.GET("/me/recovery-codes", h.GetMyRecoveryCodes)
+	apiGroup.POST("/me/recovery-codes", h.RegenerateMyRecoveryCodes)
 }
 
 func (h *Handler) RegisterUser(c echo.Context) error {
@@ -189,6 +196,80 @@ func (h *Handler) LogoutAllUser(c echo.Context) error {
 	}
 	c.SetCookie(expireCookie("refresh_token"))
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) RecoverUser(c echo.Context) error {
+	var req domain.RecoverRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	if h.authService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "auth service unavailable"})
+	}
+
+	resp, err := h.authService.RecoverWithRecoveryCode(c.Request().Context(), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUnauthorized):
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials or recovery code"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "recovery failed"})
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) GetMyRecoveryCodes(c echo.Context) error {
+	userID, ok := userIDFromContext(c)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing user context"})
+	}
+
+	if h.authService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "auth service unavailable"})
+	}
+
+	remaining, err := h.authService.GetRecoveryCodeCount(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not load recovery code status"})
+	}
+
+	return c.JSON(http.StatusOK, domain.RecoveryCodeStatusResponse{Remaining: remaining})
+}
+
+func (h *Handler) RegenerateMyRecoveryCodes(c echo.Context) error {
+	var req domain.RecoveryCodeRegenerationRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := userIDFromContext(c)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing user context"})
+	}
+
+	if h.authService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "auth service unavailable"})
+	}
+
+	resp, err := h.authService.RegenerateRecoveryCodes(c.Request().Context(), userID, req.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUnauthorized):
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid password"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not regenerate recovery codes"})
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+func userIDFromContext(c echo.Context) (string, bool) {
+	userID, ok := c.Get("user_id").(string)
+	return userID, ok
 }
 
 func expireCookie(name string) *http.Cookie {

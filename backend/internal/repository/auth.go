@@ -66,6 +66,69 @@ func (r *AuthRepository) GetUserByUsername(ctx context.Context, username string)
 	return &user, nil
 }
 
+func (r *AuthRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, username, email, password_hash
+		FROM users
+		WHERE id = $1 AND deleted_at IS NULL
+		LIMIT 1
+	`, userID)
+
+	var user domain.User
+	if err := row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *AuthRepository) GetUnusedRecoveryCodes(ctx context.Context, userID string) ([]service.RecoveryCodeRecord, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, code_hash
+		FROM recovery_codes
+		WHERE user_id = $1 AND used_at IS NULL
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var codes []service.RecoveryCodeRecord
+	for rows.Next() {
+		var code service.RecoveryCodeRecord
+		if err := rows.Scan(&code.ID, &code.CodeHash); err != nil {
+			return nil, err
+		}
+		codes = append(codes, code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return codes, nil
+}
+
+func (r *AuthRepository) MarkRecoveryCodeUsed(ctx context.Context, recoveryCodeID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE recovery_codes
+		SET used_at = NOW()
+		WHERE id = $1
+	`, recoveryCodeID)
+	return err
+}
+
+func (r *AuthRepository) DeleteRecoveryCodes(ctx context.Context, userID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM recovery_codes
+		WHERE user_id = $1
+	`, userID)
+	return err
+}
+
 func (r *AuthRepository) CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO sessions (user_id, token_hash, expires_at)

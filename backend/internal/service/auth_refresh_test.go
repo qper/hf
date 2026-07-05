@@ -57,6 +57,22 @@ func (f *fakeAuthRepository) RevokeAllSessions(ctx context.Context, userID strin
 	return nil
 }
 
+func (f *fakeAuthRepository) DeleteRecoveryCodes(ctx context.Context, userID string) error {
+	return nil
+}
+
+func (f *fakeAuthRepository) GetUnusedRecoveryCodes(ctx context.Context, userID string) ([]RecoveryCodeRecord, error) {
+	return nil, nil
+}
+
+func (f *fakeAuthRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	return nil, nil
+}
+
+func (f *fakeAuthRepository) MarkRecoveryCodeUsed(ctx context.Context, recoveryCodeID string) error {
+	return nil
+}
+
 func TestRefreshRejectsRevokedToken(t *testing.T) {
 	ctx := context.Background()
 	repo := &fakeAuthRepository{secrets: map[string]*SessionRecord{"old": {ID: "s1", UserID: "u1", TokenHash: "old", ExpiresAt: time.Now().UTC().Add(time.Hour)}}}

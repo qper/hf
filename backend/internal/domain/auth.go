@@ -30,6 +30,29 @@ type RefreshResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
+type RecoverRequest struct {
+	Username     string `json:"username"`
+	RecoveryCode string `json:"recovery_code"`
+}
+
+type RecoverResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+}
+
+type RecoveryCodeStatusResponse struct {
+	Remaining int `json:"remaining"`
+}
+
+type RecoveryCodeRegenerationRequest struct {
+	Password string `json:"password"`
+}
+
+type RecoveryCodeRegenerationResponse struct {
+	RecoveryCodes []string `json:"recovery_codes"`
+}
+
 type User struct {
 	ID           string `json:"id"`
 	Username     string `json:"username"`
