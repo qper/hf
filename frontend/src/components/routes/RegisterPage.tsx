@@ -28,7 +28,10 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
-const initialRecoveryCodes = Array.from({ length: 8 }, (_, index) => `CODE-${index + 1}`)
+const initialRecoveryCodes = Array.from(
+  { length: 8 },
+  (_, index) => `CODE-${index + 1}`,
+)
 
 export function RegisterPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -74,7 +77,9 @@ export function RegisterPage() {
   }
 
   const downloadCodes = () => {
-    const blob = new Blob([recoveryCodes.join('\n')], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob([recoveryCodes.join('\n')], {
+      type: 'text/plain;charset=utf-8',
+    })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = 'recovery-codes.txt'
@@ -86,7 +91,9 @@ export function RegisterPage() {
     <div className="mx-auto max-w-md px-4 py-8 sm:px-6">
       <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl shadow-black/30">
         <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">Access</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
+            Access
+          </p>
           <h2 className="text-3xl font-semibold">Register</h2>
           <p className="max-w-xl text-sm text-zinc-400">
             Создайте аккаунт и сохраните recovery codes для безопасного доступа.
@@ -95,17 +102,27 @@ export function RegisterPage() {
 
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm font-medium text-zinc-200">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-zinc-200"
+            >
               Username
             </label>
-            <Input id="username" {...register('username')} autoComplete="username" />
+            <Input
+              id="username"
+              {...register('username')}
+              autoComplete="username"
+            />
             {errors.username ? (
               <p className="text-sm text-rose-400">{errors.username.message}</p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-200">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-zinc-200"
+            >
               Password
             </label>
             <Input
@@ -120,7 +137,10 @@ export function RegisterPage() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-200">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-zinc-200"
+            >
               Confirm password
             </label>
             <Input
@@ -130,7 +150,9 @@ export function RegisterPage() {
               autoComplete="new-password"
             />
             {errors.confirmPassword ? (
-              <p className="text-sm text-rose-400">{errors.confirmPassword.message}</p>
+              <p className="text-sm text-rose-400">
+                {errors.confirmPassword.message}
+              </p>
             ) : null}
           </div>
 
@@ -146,7 +168,8 @@ export function RegisterPage() {
             <DialogHeader>
               <DialogTitle>Сохраните recovery codes</DialogTitle>
               <DialogDescription>
-                Они нужны для восстановления доступа. Скопируйте или скачайте кодовый файл.
+                Они нужны для восстановления доступа. Скопируйте или скачайте
+                кодовый файл.
               </DialogDescription>
             </DialogHeader>
 
@@ -154,7 +177,9 @@ export function RegisterPage() {
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4 text-sm text-zinc-100">
                 <div className="mb-4 flex items-center gap-2 text-cyan-300">
                   <FilePlus className="h-4 w-4" />
-                  <span>Восстановите доступ с помощью одного из этих кодов.</span>
+                  <span>
+                    Восстановите доступ с помощью одного из этих кодов.
+                  </span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {recoveryCodes.map((code) => (
@@ -169,10 +194,20 @@ export function RegisterPage() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button type="button" variant="outline" onClick={copyAll} className="w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={copyAll}
+                  className="w-full sm:w-auto"
+                >
                   <Shield className="mr-2 h-4 w-4" /> Копировать все
                 </Button>
-                <Button type="button" variant="outline" onClick={downloadCodes} className="w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadCodes}
+                  className="w-full sm:w-auto"
+                >
                   <Download className="mr-2 h-4 w-4" /> Скачать .txt
                 </Button>
               </div>
@@ -184,16 +219,26 @@ export function RegisterPage() {
                   onChange={(event) => setAccepted(event.target.checked)}
                   className="h-5 w-5 rounded border-zinc-600 bg-zinc-900 text-cyan-400 focus:ring-cyan-400"
                 />
-                <span>Я сохранил коды и понимаю, что они нужны для восстановления.</span>
+                <span>
+                  Я сохранил коды и понимаю, что они нужны для восстановления.
+                </span>
               </label>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" className="w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                  >
                     Закрыть
                   </Button>
                 </DialogClose>
-                <Button type="button" disabled={!accepted} className="w-full sm:w-auto">
+                <Button
+                  type="button"
+                  disabled={!accepted}
+                  className="w-full sm:w-auto"
+                >
                   Продолжить
                 </Button>
               </div>

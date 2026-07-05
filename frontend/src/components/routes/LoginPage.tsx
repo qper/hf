@@ -54,7 +54,9 @@ export function LoginPage() {
     <div className="mx-auto max-w-md px-4 py-8 sm:px-6">
       <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl shadow-black/30">
         <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">Access</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
+            Access
+          </p>
           <h2 className="text-3xl font-semibold">Login</h2>
           <p className="max-w-xl text-sm text-zinc-400">
             Войдите в систему, чтобы продолжить работу с HabitFlow.
@@ -63,17 +65,27 @@ export function LoginPage() {
 
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm font-medium text-zinc-200">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-zinc-200"
+            >
               Username
             </label>
-            <Input id="username" {...register('username')} autoComplete="username" />
+            <Input
+              id="username"
+              {...register('username')}
+              autoComplete="username"
+            />
             {errors.username ? (
               <p className="text-sm text-rose-400">{errors.username.message}</p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-200">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-zinc-200"
+            >
               Password
             </label>
             <Input
@@ -101,10 +113,16 @@ export function LoginPage() {
               {isSubmitting ? 'Вход...' : 'Войти'}
             </Button>
             <div className="flex flex-col gap-2 text-center text-sm text-zinc-400">
-              <Link to="/register" className="text-cyan-300 underline-offset-4 hover:underline">
+              <Link
+                to="/register"
+                className="text-cyan-300 underline-offset-4 hover:underline"
+              >
                 Зарегистрироваться
               </Link>
-              <Link to="/register" className="text-cyan-300 underline-offset-4 hover:underline">
+              <Link
+                to="/register"
+                className="text-cyan-300 underline-offset-4 hover:underline"
+              >
                 Войти через recovery code
               </Link>
             </div>

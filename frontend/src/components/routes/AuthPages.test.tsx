@@ -7,10 +7,16 @@ function renderWithRouter(initialEntry: string) {
   return render(<App />)
 }
 
-vi.stubGlobal('fetch', vi.fn(async () => ({
-  ok: false,
-  status: 401,
-} as Response)))
+vi.stubGlobal(
+  'fetch',
+  vi.fn(
+    async () =>
+      ({
+        ok: false,
+        status: 401,
+      }) as Response,
+  ),
+)
 
 describe('Auth pages', () => {
   afterEach(() => {
@@ -46,7 +52,9 @@ describe('Auth pages', () => {
     fireEvent.input(screen.getByLabelText(/confirm password/i), {
       target: { value: 'Password2!' },
     })
-    fireEvent.submit(screen.getByRole('button', { name: /зарегистрироваться/i }))
+    fireEvent.submit(
+      screen.getByRole('button', { name: /зарегистрироваться/i }),
+    )
 
     expect(await screen.findByText(/пароли не совпадают/i)).toBeTruthy()
   })
