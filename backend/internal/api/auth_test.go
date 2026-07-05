@@ -33,6 +33,18 @@ func (s stubAuthService) Login(ctx context.Context, req domain.LoginRequest) (*d
 	return s.loginResp, nil
 }
 
+func (s stubAuthService) Refresh(ctx context.Context, refreshToken string) (*domain.RefreshResponse, error) {
+	return nil, nil
+}
+
+func (s stubAuthService) Logout(ctx context.Context, refreshToken string) error {
+	return nil
+}
+
+func (s stubAuthService) LogoutAll(ctx context.Context, refreshToken string) error {
+	return nil
+}
+
 func TestRegisterEndpointReturnsCreated(t *testing.T) {
 	h := NewHandler(service.NewHealthService(), "1.0.0")
 	h.authService = stubAuthService{resp: &domain.RegisterResponse{User: domain.User{ID: "u1", Username: "alice", Email: "alice@example.com"}, RecoveryCodes: []string{"AAAAAA", "BBBBBB"}}}

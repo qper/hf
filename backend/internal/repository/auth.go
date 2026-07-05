@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/qper/hf/internal/domain"
+	"github.com/qper/hf/internal/service"
 )
 
 type AuthRepository struct {
@@ -68,6 +71,64 @@ func (r *AuthRepository) CreateSession(ctx context.Context, userID, tokenHash st
 		INSERT INTO sessions (user_id, token_hash, expires_at)
 		VALUES ($1, $2, $3)
 	`, userID, tokenHash, expiresAt)
+	return err
+}
+
+func (r *AuthRepository) GetSessionByToken(ctx context.Context, token string) (*service.SessionRecord, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, user_id, token_hash, expires_at, revoked_at
+		FROM sessions
+		ORDER BY created_at DESC
+	`)
+
+	var sessions []service.SessionRecord
+	for row.Next() {
+		var session service.SessionRecord
+		var revokedAt sql.NullTime
+		if err := row.Scan(&session.ID, &session.UserID, &session.TokenHash, &session.ExpiresAt, &revokedAt); err != nil {
+			return nil, err
+		}
+		if revokedAt.Valid {
+			session.RevokedAt = &revokedAt.Time
+		}
+		sessions = append(sessions, session)
+	}
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, session := range sessions {
+		if err := bcrypt.CompareHashAndPassword([]byte(session.TokenHash), []byte(token)); err == nil {
+			return &session, nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *AuthRepository) RevokeSession(ctx context.Context, sessionID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE sessions
+		SET revoked_at = NOW()
+		WHERE id = $1 AND revoked_at IS NULL
+	`, sessionID)
+	return err
+}
+
+func (r *AuthRepository) RevokeSessionByToken(ctx context.Context, token string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE sessions
+		SET revoked_at = NOW()
+		WHERE token_hash = $1 AND revoked_at IS NULL
+	`, token)
+	return err
+}
+
+func (r *AuthRepository) RevokeAllSessions(ctx context.Context, userID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE sessions
+		SET revoked_at = NOW()
+		WHERE user_id = $1 AND revoked_at IS NULL
+	`, userID)
 	return err
 }
 

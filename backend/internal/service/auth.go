@@ -26,6 +26,7 @@ var (
 	ErrConflict     = fmt.Errorf("username or email already exists")
 	ErrValidation   = fmt.Errorf("invalid registration payload")
 	ErrUnauthorized = fmt.Errorf("invalid credentials")
+	ErrSession      = fmt.Errorf("invalid session")
 )
 
 type AuthService struct {
@@ -38,6 +39,18 @@ type AuthRepository interface {
 	CreateRecoveryCodes(ctx context.Context, userID string, codeHashes []string) error
 	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
 	CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
+	GetSessionByToken(ctx context.Context, token string) (*SessionRecord, error)
+	RevokeSession(ctx context.Context, sessionID string) error
+	RevokeSessionByToken(ctx context.Context, token string) error
+	RevokeAllSessions(ctx context.Context, userID string) error
+}
+
+type SessionRecord struct {
+	ID        string
+	UserID    string
+	TokenHash string
+	ExpiresAt time.Time
+	RevokedAt *time.Time
 }
 
 func NewAuthService(repo AuthRepository) *AuthService {
@@ -110,13 +123,78 @@ func (s *AuthService) Login(ctx context.Context, req domain.LoginRequest) (*doma
 	}
 
 	refreshToken := newRefreshToken()
-	hash := sha256.Sum256([]byte(refreshToken))
+	hash, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
 	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
-	if err := s.repo.CreateSession(ctx, user.ID, hex.EncodeToString(hash[:]), expiresAt); err != nil {
+	if err := s.repo.CreateSession(ctx, user.ID, string(hash), expiresAt); err != nil {
 		return nil, err
 	}
 
 	return &domain.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken, TokenType: "Bearer", ExpiresIn: 900}, nil
+}
+
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*domain.RefreshResponse, error) {
+	if strings.TrimSpace(refreshToken) == "" {
+		return nil, ErrSession
+	}
+
+	session, err := s.repo.GetSessionByToken(ctx, refreshToken)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		return nil, ErrSession
+	}
+	if session.RevokedAt != nil || session.ExpiresAt.Before(time.Now().UTC()) {
+		if session.UserID != "" {
+			_ = s.repo.RevokeAllSessions(ctx, session.UserID)
+		}
+		return nil, ErrSession
+	}
+
+	if err := s.repo.RevokeSession(ctx, session.ID); err != nil {
+		return nil, err
+	}
+
+	newRefreshToken := newRefreshToken()
+	hash, err := bcrypt.GenerateFromPassword([]byte(newRefreshToken), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
+	if err := s.repo.CreateSession(ctx, session.UserID, string(hash), expiresAt); err != nil {
+		return nil, err
+	}
+
+	accessToken, err := s.createAccessToken(session.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.RefreshResponse{AccessToken: accessToken, RefreshToken: newRefreshToken, TokenType: "Bearer", ExpiresIn: 900}, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	if strings.TrimSpace(refreshToken) == "" {
+		return ErrSession
+	}
+	return s.repo.RevokeSessionByToken(ctx, refreshToken)
+}
+
+func (s *AuthService) LogoutAll(ctx context.Context, refreshToken string) error {
+	if strings.TrimSpace(refreshToken) == "" {
+		return ErrSession
+	}
+	session, err := s.repo.GetSessionByToken(ctx, refreshToken)
+	if err != nil {
+		return err
+	}
+	if session == nil {
+		return ErrSession
+	}
+	return s.repo.RevokeAllSessions(ctx, session.UserID)
 }
 
 func (s *AuthService) createAccessToken(userID string) (string, error) {

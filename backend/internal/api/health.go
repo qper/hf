@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/qper/hf/internal/domain"
@@ -19,6 +20,9 @@ type DBChecker interface {
 type AuthService interface {
 	Register(ctx context.Context, req domain.RegisterRequest) (*domain.RegisterResponse, error)
 	Login(ctx context.Context, req domain.LoginRequest) (*domain.LoginResponse, error)
+	Refresh(ctx context.Context, refreshToken string) (*domain.RefreshResponse, error)
+	Logout(ctx context.Context, refreshToken string) error
+	LogoutAll(ctx context.Context, refreshToken string) error
 }
 
 type dbChecker struct {
@@ -64,6 +68,9 @@ func (h *Handler) Register(e *echo.Echo) {
 	})
 	e.POST("/api/v1/auth/register", h.RegisterUser)
 	e.POST("/auth/login", h.LoginUser)
+	e.POST("/auth/refresh", h.RefreshUser)
+	e.POST("/auth/logout", h.LogoutUser)
+	e.POST("/auth/logout-all", h.LogoutAllUser)
 }
 
 func (h *Handler) RegisterUser(c echo.Context) error {
@@ -121,6 +128,66 @@ func (h *Handler) LoginUser(c echo.Context) error {
 	})
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) RefreshUser(c echo.Context) error {
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing refresh token"})
+	}
+
+	resp, err := h.authService.Refresh(c.Request().Context(), cookie.Value)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    resp.RefreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) LogoutUser(c echo.Context) error {
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+		c.SetCookie(expireCookie("refresh_token"))
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}
+	if err := h.authService.Logout(c.Request().Context(), cookie.Value); err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
+	}
+	c.SetCookie(expireCookie("refresh_token"))
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) LogoutAllUser(c echo.Context) error {
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+		c.SetCookie(expireCookie("refresh_token"))
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}
+	if err := h.authService.LogoutAll(c.Request().Context(), cookie.Value); err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
+	}
+	c.SetCookie(expireCookie("refresh_token"))
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func expireCookie(name string) *http.Cookie {
+	return &http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}
 }
 
 func (h *Handler) Healthz(w http.ResponseWriter, r *http.Request) {
