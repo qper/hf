@@ -15,10 +15,13 @@ export function HomePage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">Dashboard</p>
+      <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
+        Dashboard
+      </p>
       <h2 className="text-3xl font-semibold">Home route</h2>
       <p className="max-w-2xl text-zinc-400">
-        This page uses React Query to cache data across renders and route changes.
+        This page uses React Query to cache data across renders and route
+        changes.
       </p>
       <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4">
         {isPending ? (
