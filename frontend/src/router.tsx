@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   RouterProvider,
+  RouterContextProvider,
   createBrowserHistory,
   createRouter,
 } from '@tanstack/react-router'
@@ -34,12 +35,13 @@ export function AppRouter() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router}>
+      <RouterContextProvider router={router}>
+        <RouterProvider router={router} />
         {isDevelopment ? <ReactQueryDevtools initialIsOpen={false} /> : null}
         {isDevelopment ? (
           <TanStackRouterDevtools position="bottom-right" />
         ) : null}
-      </RouterProvider>
+      </RouterContextProvider>
     </QueryClientProvider>
   )
 }

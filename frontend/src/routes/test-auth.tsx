@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createFileRoute } from '@tanstack/react-router'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import * as auth from '@/api/auth'
 
 function TestAuthPage() {
