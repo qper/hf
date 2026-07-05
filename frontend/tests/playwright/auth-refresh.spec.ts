@@ -1,3 +1,4 @@
+/* global process */
 import { test, expect } from '@playwright/test'
 
 test('auto-refresh after token expiry (mocked)', async ({ page, context }) => {

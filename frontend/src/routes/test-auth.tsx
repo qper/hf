@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createFileRoute } from '@tanstack/react-router'
 import React, { useState } from 'react'
 import * as auth from '@/api/auth'
@@ -9,7 +10,7 @@ function TestAuthPage() {
     try {
       await auth.login('alice', 'password')
       setStatus('logged-in')
-    } catch (e) {
+    } catch {
       setStatus('login-failed')
     }
   }
@@ -18,7 +19,7 @@ function TestAuthPage() {
     try {
       const res = await auth.authFetch('/api/v1/protected')
       setStatus(String(res.status))
-    } catch (e) {
+    } catch {
       setStatus('error')
     }
   }
