@@ -143,7 +143,15 @@ func (r *CategoryRepository) UpdateCategory(ctx context.Context, userID string, 
 }
 
 func (r *CategoryRepository) DeleteCategory(ctx context.Context, userID string, categoryID string) error {
-	result, err := r.db.ExecContext(ctx, `
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE categories
 		SET deleted_at = $3, updated_at = NOW()
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
@@ -157,6 +165,18 @@ func (r *CategoryRepository) DeleteCategory(ctx context.Context, userID string, 
 	}
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE habits
+		SET category_id = NULL, updated_at = NOW()
+		WHERE category_id = $1 AND user_id = $2 AND is_deleted = FALSE
+	`, categoryID, userID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	return nil
 }

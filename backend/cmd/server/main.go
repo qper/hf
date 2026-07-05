@@ -177,7 +177,9 @@ func newServer(cfg ...interface{}) *echo.Echo {
 	if db != nil {
 		habitRepo := repository.NewHabitRepository(db)
 		habitService := service.NewHabitService(habitRepo)
-		apiHandler = api.NewHandlerWithHabit(healthService, appConfig.Version, authService, habitService)
+		categoryRepo := repository.NewCategoryRepository(db)
+		categoryService := service.NewCategoryService(categoryRepo)
+		apiHandler = api.NewHandlerWithServices(healthService, appConfig.Version, authService, habitService, categoryService)
 		apiHandler = apiHandler.WithDBChecker(api.NewDBChecker(db))
 	}
 	apiHandler.Register(e)
