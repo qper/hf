@@ -4,7 +4,7 @@ import { HabitRow } from './HabitRow'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type BoardPageProps = {
@@ -16,6 +16,10 @@ function BoardPageComponent({ date }: BoardPageProps) {
   const navigate = useNavigate()
   const today = new Date().toISOString().split('T')[0]
   const currentDate = date || today
+  const boardRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
   const { data: board, isPending, error } = useQuery({
     queryKey: ['board', currentDate],
@@ -32,6 +36,41 @@ function BoardPageComponent({ date }: BoardPageProps) {
     [navigate],
   )
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const touchEndX = e.changedTouches[0].clientX
+      const touchEndY = e.changedTouches[0].clientY
+      const deltaX = touchEndX - touchStartX.current
+      const deltaY = touchEndY - touchStartY.current
+
+      // Only handle horizontal swipe if vertical movement is minimal
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+        setIsTransitioning(true)
+        const d = new Date(currentDate)
+
+        if (deltaX < -50) {
+          // Swipe left - go to next day
+          if (currentDate < today) {
+            d.setDate(d.getDate() + 1)
+            handleDateChange(d.toISOString().split('T')[0])
+          }
+        } else if (deltaX > 50) {
+          // Swipe right - go to previous day
+          d.setDate(d.getDate() - 1)
+          handleDateChange(d.toISOString().split('T')[0])
+        }
+
+        setTimeout(() => setIsTransitioning(false), 100)
+      }
+    },
+    [currentDate, today, handleDateChange],
+  )
+
   if (error) {
     return (
       <div className="space-y-4">
@@ -41,7 +80,12 @@ function BoardPageComponent({ date }: BoardPageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      ref={boardRef}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className={`space-y-6 ${isTransitioning ? 'animate-slide-in' : ''}`}
+    >
       <div>
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
           Board
@@ -53,6 +97,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
         date={currentDate}
         onDateChange={handleDateChange}
         progress={board?.progress}
+        isEditable={board?.is_editable ?? true}
       />
 
       {isPending ? (

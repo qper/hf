@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,9 +7,10 @@ type DateNavBarProps = {
   date: string
   onDateChange: (date: string) => void
   progress?: { done: number; total: number }
+  isEditable?: boolean
 }
 
-export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
+export function DateNavBar({ date, onDateChange, progress, isEditable = true }: DateNavBarProps) {
   const { i18n, t } = useTranslation()
   const today = new Date().toISOString().split('T')[0]
   const isToday = date === today
@@ -50,28 +51,38 @@ export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
       ? Math.round((progress.done / progress.total) * 100)
       : 0
 
+  const readOnlyTooltip = t('board.editWindowClosed')
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${!isEditable ? 'opacity-50' : ''}`}>
       {/* Date Navigation */}
       <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
           onClick={handlePrevDay}
-          className="text-zinc-400 hover:text-zinc-100"
+          disabled={!isEditable}
+          title={!isEditable ? readOnlyTooltip : ''}
+          className="text-zinc-400 hover:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        <div className="text-center">
+        <div className="text-center flex items-center justify-center gap-2">
           <p className="text-sm text-zinc-400">{getLocalizedDate()}</p>
+          {!isEditable && (
+            <div title={readOnlyTooltip} className="flex-shrink-0">
+              <Lock className="h-4 w-4 text-amber-600" />
+            </div>
+          )}
         </div>
 
         <Button
           variant="ghost"
           size="sm"
           onClick={handleNextDay}
-          disabled={!canGoForward}
+          disabled={!canGoForward || !isEditable}
+          title={!isEditable ? readOnlyTooltip : ''}
           className="text-zinc-400 hover:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronRight className="h-4 w-4" />
@@ -85,7 +96,8 @@ export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
             variant="outline"
             size="sm"
             onClick={handleToday}
-            className="text-xs"
+            disabled={!isEditable}
+            className="text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t('common.today')}
           </Button>
