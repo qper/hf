@@ -1,10 +1,6 @@
-import { createFileRoute, Navigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { IndexPage } from '@/components/routes/IndexPage'
 
 export const Route = createFileRoute('/')({
-  component: IndexRoute,
+  component: IndexPage,
 })
-
-function IndexRoute() {
-  const today = new Date().toISOString().split('T')[0]
-  return <Navigate to={`/board/${today}`} replace />
-}

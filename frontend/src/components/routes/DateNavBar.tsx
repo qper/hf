@@ -10,7 +10,7 @@ type DateNavBarProps = {
 }
 
 export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation()
   const today = new Date().toISOString().split('T')[0]
   const isToday = date === today
 
@@ -87,7 +87,7 @@ export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
             onClick={handleToday}
             className="text-xs"
           >
-            Today
+            {t('common.today')}
           </Button>
         </div>
       )}
@@ -109,3 +109,4 @@ export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
     </div>
   )
 }
+

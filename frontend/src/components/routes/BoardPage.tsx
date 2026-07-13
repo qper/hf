@@ -5,12 +5,14 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CheckCircle2, Circle, Zap } from 'lucide-react'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type BoardPageProps = {
   date?: string
 }
 
 function BoardPageComponent({ date }: BoardPageProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const today = new Date().toISOString().split('T')[0]
   const currentDate = date || today
@@ -44,7 +46,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
           Board
         </p>
-        <h2 className="text-3xl font-semibold">Daily Tracker</h2>
+        <h2 className="text-3xl font-semibold">{t('board.title')}</h2>
       </div>
 
       <DateNavBar
@@ -68,7 +70,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
         <div className="space-y-3">
           {board.habits.length === 0 ? (
             <p className="text-sm text-zinc-400 text-center py-8">
-              No habits yet. Create one to get started!
+              {t('board.noHabits')}
             </p>
           ) : (
             board.habits.map((habit) => (
