@@ -1,6 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MoreHorizontal, GripVertical, Archive, Trash2, Plus } from 'lucide-react'
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { HabitFormDialog, type HabitFormValues } from './HabitFormDialog'
+import { reorderHabits } from './habitReorder'
 
 type Habit = {
   id: string
@@ -17,6 +35,8 @@ type Habit = {
   selectedDays?: string[]
   weeklyCount?: string
 }
+
+const STORAGE_KEY = 'hf-habits-order'
 
 const initialHabits: Habit[] = [
   {
@@ -35,7 +55,7 @@ const initialHabits: Habit[] = [
     name: 'Morning run',
     icon: '🏃',
     streak: 4,
-    archived: true,
+    archived: false,
     category: 'Health',
     type: 'numeric',
     color: '#f59e0b',
@@ -43,29 +63,184 @@ const initialHabits: Habit[] = [
     unit: 'км',
     frequency: 'weekly',
   },
+  {
+    id: '3',
+    name: 'Meditation',
+    icon: '🧘',
+    streak: 2,
+    archived: false,
+    category: 'All',
+    type: 'boolean',
+    color: '#8b5cf6',
+    frequency: 'daily',
+  },
+  {
+    id: '4',
+    name: 'Deep work',
+    icon: '💼',
+    streak: 6,
+    archived: true,
+    category: 'Work',
+    type: 'boolean',
+    color: '#ef4444',
+    frequency: 'daily',
+  },
 ]
 
 const categories = ['All', 'Health', 'Work', 'Learning']
 
+function getStoredHabits(baseHabits: Habit[]): Habit[] {
+  if (typeof window === 'undefined') {
+    return baseHabits
+  }
+
+  try {
+    const savedOrder = window.localStorage.getItem(STORAGE_KEY)
+    if (!savedOrder) {
+      return baseHabits
+    }
+
+    const orderedIds = JSON.parse(savedOrder) as string[]
+    const orderedHabits = orderedIds
+      .map((id) => baseHabits.find((habit) => habit.id === id))
+      .filter((habit): habit is Habit => Boolean(habit))
+    const remainingHabits = baseHabits.filter((habit) => !orderedIds.includes(habit.id))
+
+    return [...orderedHabits, ...remainingHabits]
+  } catch {
+    return baseHabits
+  }
+}
+
+type SortableHabitRowProps = {
+  habit: Habit
+  menuOpenId: string | null
+  setMenuOpenId: (value: string | null) => void
+  onArchive: (habitId: string) => void
+  onDelete: (habitId: string) => void
+  onEdit: (habit: Habit) => void
+}
+
+function SortableHabitRow({
+  habit,
+  menuOpenId,
+  setMenuOpenId,
+  onArchive,
+  onDelete,
+  onEdit,
+}: SortableHabitRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-testid={`habit-row-${habit.id}`}
+      className={`flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 ${isDragging ? 'border-cyan-500/70 shadow-lg shadow-cyan-500/10' : ''}`}
+    >
+      <button
+        type="button"
+        className={`text-zinc-500 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        aria-label={`drag-${habit.id}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={18} />
+      </button>
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-lg">
+        {habit.icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-white">{habit.name}</p>
+        <p className="text-sm text-zinc-400">{habit.category}</p>
+      </div>
+      <div className="hidden items-center gap-1 text-sm text-orange-400 sm:flex">
+        <span>🔥</span>
+        <span>{habit.streak}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="archive"
+          onClick={() => onArchive(habit.id)}
+          className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+        >
+          <Archive size={16} />
+        </button>
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="more"
+            onClick={() => setMenuOpenId((current) => (current === habit.id ? null : habit.id))}
+            className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          >
+            <MoreHorizontal size={16} />
+          </button>
+          <div className={`absolute right-0 z-10 mt-2 min-w-[140px] rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-lg ${menuOpenId === habit.id ? 'block' : 'hidden'}`}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpenId(null)
+                onEdit(habit)
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              aria-label="delete"
+              onClick={() => onDelete(habit.id)}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-zinc-800"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function HabitsPage() {
   const [activeCategory, setActiveCategory] = useState('All')
-  const [habits, setHabits] = useState(initialHabits)
+  const [habits, setHabits] = useState<Habit[]>(() => getStoredHabits(initialHabits))
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
   const visibleHabits = useMemo(() => {
     return habits.filter((habit) => {
-      const categoryMatch =
-        activeCategory === 'All' || habit.category === activeCategory
+      const categoryMatch = activeCategory === 'All' || habit.category === activeCategory
       return categoryMatch && !habit.archived
     })
   }, [activeCategory, habits])
 
   const archivedHabits = useMemo(() => {
     return habits.filter((habit) => habit.archived)
+  }, [habits])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return
+    }
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(habits.filter((habit) => !habit.archived).map((habit) => habit.id)))
   }, [habits])
 
   const handleArchive = (habitId: string) => {
@@ -120,6 +295,39 @@ export function HabitsPage() {
     setIsDialogOpen(false)
   }
 
+  const handleReorder = async (activeId: string, overId: string) => {
+    const previousHabits = habits
+
+    if (activeId === overId) {
+      return
+    }
+
+    const nextHabits = reorderHabits(habits, activeId, overId)
+    setHabits(nextHabits)
+
+    try {
+      const response = await fetch('/api/v1/habits/reorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: nextHabits.filter((habit) => !habit.archived).map((habit) => habit.id) }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reorder habits')
+      }
+    } catch {
+      setHabits(previousHabits)
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      void handleReorder(String(active.id), String(over.id))
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -154,73 +362,23 @@ export function HabitsPage() {
         ))}
       </div>
 
-      <div className="space-y-3">
-        {visibleHabits.map((habit) => (
-          <div
-            key={habit.id}
-            data-testid={`habit-row-${habit.id}`}
-            className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"
-          >
-            <button type="button" className="text-zinc-500" aria-label="drag">
-              <GripVertical size={18} />
-            </button>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-lg">
-              {habit.icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-white">{habit.name}</p>
-              <p className="text-sm text-zinc-400">{habit.category}</p>
-            </div>
-            <div className="hidden items-center gap-1 text-sm text-orange-400 sm:flex">
-              <span>🔥</span>
-              <span>{habit.streak}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="archive"
-                onClick={() => handleArchive(habit.id)}
-                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-              >
-                <Archive size={16} />
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  aria-label="more"
-                  onClick={() => setMenuOpenId((current) => (current === habit.id ? null : habit.id))}
-                  className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-                <div className={`absolute right-0 z-10 mt-2 min-w-[140px] rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-lg ${menuOpenId === habit.id ? 'block' : 'hidden'}`}>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMenuOpenId(null)
-                      openEditDialog(habit)
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    aria-label="delete"
-                    onClick={() => handleDelete(habit.id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-zinc-800"
-                  >
-                    <Trash2 size={14} />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={visibleHabits.map((habit) => habit.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {visibleHabits.map((habit) => (
+              <SortableHabitRow
+                key={habit.id}
+                habit={habit}
+                menuOpenId={menuOpenId}
+                setMenuOpenId={setMenuOpenId}
+                onArchive={handleArchive}
+                onDelete={handleDelete}
+                onEdit={openEditDialog}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       <HabitFormDialog
         open={isDialogOpen}

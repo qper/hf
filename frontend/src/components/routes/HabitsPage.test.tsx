@@ -7,7 +7,7 @@ describe('HabitsPage', () => {
   it('hides an archived habit from the active list', () => {
     render(<HabitsPage />)
 
-    const archiveButton = screen.getByRole('button', { name: /archive/i })
+    const archiveButton = screen.getAllByRole('button', { name: /archive/i })[0]
 
     fireEvent.click(archiveButton)
 
@@ -18,8 +18,8 @@ describe('HabitsPage', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<HabitsPage />)
 
-    fireEvent.click(screen.getByRole('button', { name: /more/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /delete/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /more/i })[0])
+    fireEvent.click(screen.getAllByRole('menuitem', { name: /delete/i })[0])
 
     expect(confirmSpy).toHaveBeenCalled()
   })
