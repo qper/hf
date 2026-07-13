@@ -180,7 +180,8 @@ func newServer(cfg ...interface{}) *echo.Echo {
 		categoryRepo := repository.NewCategoryRepository(db)
 		categoryService := service.NewCategoryService(categoryRepo)
 		boardService := service.NewBoardService(repository.NewBoardRepository(db), appConfig)
-		apiHandler = api.NewHandlerWithServices(healthService, appConfig.Version, authService, habitService, categoryService, boardService)
+		entryService := service.NewEntryService(repository.NewEntryRepository(db), appConfig)
+		apiHandler = api.NewHandlerWithServices(healthService, appConfig.Version, authService, habitService, categoryService, boardService, entryService)
 		apiHandler = apiHandler.WithDBChecker(api.NewDBChecker(db))
 	}
 	apiHandler.Register(e)
