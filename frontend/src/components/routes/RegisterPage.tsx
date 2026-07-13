@@ -115,7 +115,8 @@ export function RegisterPage() {
 
   const handleContinue = () => {
     setIsDialogOpen(false)
-    navigate({ to: '/board' })
+    const today = new Date().toISOString().split('T')[0]
+    navigate({ to: '/board/$date', params: { date: today } })
   }
 
   return (
