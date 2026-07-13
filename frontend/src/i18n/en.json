@@ -15,6 +15,7 @@
   },
   "board": {
     "title": "Daily Tracker",
-    "noHabits": "No habits yet. Create one to get started!"
+    "noHabits": "No habits yet. Create one to get started!",
+    "editWindowClosed": "Outside edit window"
   }
 }
