@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCallback, useRef, useState } from 'react'
+import type { TouchEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type BoardPageProps = {
@@ -36,13 +37,13 @@ function BoardPageComponent({ date }: BoardPageProps) {
     [navigate],
   )
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }, [])
 
   const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
+    (e: TouchEvent) => {
       const touchEndX = e.changedTouches[0].clientX
       const touchEndY = e.changedTouches[0].clientY
       const deltaX = touchEndX - touchStartX.current
