@@ -97,17 +97,13 @@ export async function login(username: string, password: string): Promise<LoginRe
     body: JSON.stringify({ username, password }),
   })
 
-  const data = (await res.json().catch(() => ({} as Record<string, unknown>))) as Record<string, unknown>
-
   if (!res.ok) {
-    const errorMessage = typeof data.error === 'string' ? data.error : 'Ошибка при входе. Попробуйте позже.'
-    const error = new Error(errorMessage)
-    ;(error as any).status = res.status
-    throw error
+    throw res
   }
 
-  accessToken = (data.access_token as string) || null
-  return data as LoginResponse
+  const data = (await res.json()) as LoginResponse
+  accessToken = data.access_token || null
+  return data
 }
 
 export async function logout(): Promise<void> {
