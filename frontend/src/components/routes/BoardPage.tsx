@@ -78,7 +78,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
   if (error) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-red-400">Error loading board: {error.message}</p>
+        <p className="text-sm text-red-400">{t('errors.boardLoadFailed')}: {error.message}</p>
       </div>
     )
   }
@@ -93,7 +93,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
     >
       <div>
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
-          Board
+          {t('board.sectionTitle')}
         </p>
         <h2 className="text-3xl font-semibold">{t('board.title')}</h2>
       </div>

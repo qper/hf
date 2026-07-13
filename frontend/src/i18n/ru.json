@@ -19,7 +19,8 @@
     "downloadFailed": "Ошибка при скачивании кодов.",
     "passwordMismatch": "Пароли не совпадают",
     "passwordTooShort": "Минимум 8 символов",
-    "passwordDigit": "Нужна хотя бы одна цифра"
+    "passwordDigit": "Нужна хотя бы одна цифра",
+    "boardLoadFailed": "Не удалось загрузить доску"
   },
   "common": {
     "loading": "Загрузка...",
@@ -32,6 +33,17 @@
     "copied": "Скопировано!",
     "downloadTxt": "Скачать .txt",
     "username": "Username",
+    "appTitle": "HabitFlow",
+    "modernFrontendShell": "Современный фронтенд-оболочка",
+    "dashboard": "Панель",
+    "homeRoute": "Главная страница",
+    "loadingGreeting": "Загрузка приветствия...",
+    "edit": "Изменить",
+    "delete": "Удалить",
+    "restore": "Восстановить",
+    "new": "Новая",
+    "archive": "Архив",
+    "deleteConfirm": "Удалить эту привычку?",
     "password": "Пароль",
     "confirmPassword": "Подтвердите пароль",
     "signIn": "Войти",
@@ -72,6 +84,10 @@
     "unit": "Единица",
     "frequency": "Частота",
     "weeklyCount": "Количество раз в неделю",
+    "defaultTarget": "20",
+    "defaultUnit": "шт",
+    "durationPlaceholder": "0 мин",
+    "durationUnit": "мин",
     "daily": "Ежедневно",
     "custom": "Конкретные дни",
     "weekly": "N раз в неделю",
@@ -87,6 +103,13 @@
     "requiredTarget": "Цель обязательна",
     "requiredDays": "Выберите хотя бы один день",
     "requiredWeeklyCount": "Укажите количество раз",
+    "pageTitle": "Привычки",
+    "pageSubtitle": "Твои цели и привычки",
+    "types": {
+      "boolean": "Да/Нет",
+      "numeric": "Числовая",
+      "duration": "Длительность"
+    },
     "categories": {
       "all": "Все",
       "health": "Здоровье",
@@ -96,6 +119,16 @@
   },
   "board": {
     "title": "Дневной трекер",
+    "sectionTitle": "Доска",
     "noHabits": "Привычек пока нет. Создайте первую привычку!"
+  },
+  "days": {
+    "mon": "Пн",
+    "tue": "Вт",
+    "wed": "Ср",
+    "thu": "Чт",
+    "fri": "Пт",
+    "sat": "Сб",
+    "sun": "Вс"
   }
 }

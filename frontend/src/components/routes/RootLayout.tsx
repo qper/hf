@@ -12,9 +12,9 @@ export function RootLayout() {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
-              HabitFlow
+              {t('common.appTitle')}
             </p>
-            <h1 className="text-xl font-semibold">Modern frontend shell</h1>
+            <h1 className="text-xl font-semibold">{t('common.modernFrontendShell')}</h1>
           </div>
           <nav className="flex flex-wrap items-center gap-3">
             <Link

@@ -1,6 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import '@/i18n'
+import i18n from '@/i18n'
 import { HabitFormDialog } from './HabitFormDialog'
+
+beforeEach(async () => {
+  await i18n.changeLanguage('ru')
+})
 
 describe('HabitFormDialog', () => {
   it('requires target value for numeric habits', async () => {

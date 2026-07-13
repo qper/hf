@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MoreHorizontal, GripVertical, Archive, Trash2, Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   closestCenter,
   DndContext,
@@ -129,6 +130,7 @@ function SortableHabitRow({
   onDelete,
   onEdit,
 }: SortableHabitRowProps) {
+  const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -190,7 +192,7 @@ function SortableHabitRow({
               }}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
             >
-              Edit
+              {t('common.edit')}
             </button>
             <button
               type="button"
@@ -200,7 +202,7 @@ function SortableHabitRow({
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-zinc-800"
             >
               <Trash2 size={14} />
-              Delete
+              {t('common.delete')}
             </button>
           </div>
         </div>
@@ -210,6 +212,7 @@ function SortableHabitRow({
 }
 
 export function HabitsPage() {
+  const { t } = useTranslation()
   const [activeCategory, setActiveCategory] = useState('All')
   const [habits, setHabits] = useState<Habit[]>(() => getStoredHabits(initialHabits))
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -252,7 +255,7 @@ export function HabitsPage() {
   }
 
   const handleDelete = (habitId: string) => {
-    const confirmed = window.confirm('Delete this habit?')
+    const confirmed = window.confirm(t('common.deleteConfirm'))
     if (!confirmed) return
     setHabits((current) => current.filter((habit) => habit.id !== habitId))
   }
@@ -332,8 +335,8 @@ export function HabitsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-semibold text-white">Привычки</h2>
-          <p className="text-sm text-zinc-400">Твои цели и привычки</p>
+          <h2 className="text-3xl font-semibold text-white">{t('habits.pageTitle')}</h2>
+          <p className="text-sm text-zinc-400">{t('habits.pageSubtitle')}</p>
         </div>
         <button
           type="button"
@@ -341,7 +344,7 @@ export function HabitsPage() {
           className="flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-cyan-400"
         >
           <Plus size={16} />
-          Новая
+          {t('common.new')}
         </button>
       </div>
 
@@ -357,7 +360,7 @@ export function HabitsPage() {
                 : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
-            {category}
+            {t(`habits.categories.${category.toLowerCase()}`) ?? category}
           </button>
         ))}
       </div>
@@ -405,7 +408,7 @@ export function HabitsPage() {
           onClick={() => setArchiveOpen((current) => !current)}
           className="flex w-full items-center justify-between text-left"
         >
-          <span className="font-medium text-white">Архив ({archivedHabits.length})</span>
+          <span className="font-medium text-white">{t('common.archive')} ({archivedHabits.length})</span>
           <span className="text-sm text-zinc-400">{archiveOpen ? '▾' : '▸'}</span>
         </button>
         {archiveOpen ? (
@@ -418,7 +421,7 @@ export function HabitsPage() {
                   onClick={() => handleArchive(habit.id)}
                   className="text-cyan-400"
                 >
-                  Restore
+                  {t('common.restore')}
                 </button>
               </div>
             ))}

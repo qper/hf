@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import '@/i18n'
+import i18n from '@/i18n'
 import App from '@/App'
 
 function renderWithRouter(initialEntry: string) {
@@ -12,9 +14,10 @@ const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
 describe('Auth pages', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     fetchMock.mockReset()
     fetchMock.mockResolvedValue(new Response(null, { status: 401 }))
+    await i18n.changeLanguage('ru')
   })
 
   afterEach(() => {

@@ -33,7 +33,7 @@ export type HabitFormValues = {
 
 const colorOptions = ['#14b8a6', '#f59e0b', '#8b5cf6', '#ef4444', '#22c55e', '#3b82f6', '#f97316', '#ec4899', '#64748b', '#e2e8f0']
 const iconOptions = ['Sparkles', 'BookOpen', 'Dumbbell', 'Moon', 'Sun', 'Footprints', 'TreePine', 'Coffee', 'Target', 'Heart']
-const dayOptions = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+const dayOptions = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 const habitSchema = (t: (key: string) => string) => z.object({
   name: z.string().trim().min(1, t('habits.requiredName')),
@@ -152,6 +152,12 @@ export function HabitFormDialog({
     setValue('selectedDays', next, { shouldDirty: true, shouldTouch: true })
   }
 
+  const typeLabels = {
+    boolean: t('habits.types.boolean'),
+    numeric: t('habits.types.numeric'),
+    duration: t('habits.types.duration'),
+  }
+
   const frequencyHint =
     selectedFrequency === 'daily'
       ? t('habits.everyDay')
@@ -187,7 +193,7 @@ export function HabitFormDialog({
                     disabled={mode === 'edit'}
                     {...register('type')}
                   />
-                  {type === 'boolean' ? 'boolean' : type === 'numeric' ? 'numeric' : 'duration'}
+                  {typeLabels[type]}
                 </label>
               ))}
             </div>
@@ -241,12 +247,12 @@ export function HabitFormDialog({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-200">{t('habits.targetValue')}</label>
-                <Input type="number" {...register('targetValue')} placeholder="20" />
+                <Input type="number" {...register('targetValue')} placeholder={t('habits.defaultTarget')} />
                 {errors.targetValue ? <p className="text-sm text-rose-400">{errors.targetValue.message}</p> : null}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-200">{t('habits.unit')}</label>
-                <Input {...register('unit')} placeholder="шт" />
+                <Input {...register('unit')} placeholder={t('habits.defaultUnit')} />
               </div>
             </div>
           ) : null}
@@ -278,7 +284,7 @@ export function HabitFormDialog({
                   className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm ${selectedDays.includes(day) ? 'border-cyan-400 bg-cyan-500/10 text-cyan-300' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}
                 >
                   {selectedDays.includes(day) ? <Check size={14} /> : <Circle size={14} />}
-                  {day}
+                  {t(`days.${day}`)}
                 </button>
               ))}
             </div>

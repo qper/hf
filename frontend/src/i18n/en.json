@@ -19,7 +19,8 @@
     "downloadFailed": "Failed to download recovery codes.",
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Minimum 8 characters",
-    "passwordDigit": "At least one digit is required"
+    "passwordDigit": "At least one digit is required",
+    "boardLoadFailed": "Error loading board"
   },
   "common": {
     "loading": "Loading...",
@@ -32,6 +33,17 @@
     "copied": "Copied!",
     "downloadTxt": "Download .txt",
     "username": "Username",
+    "appTitle": "HabitFlow",
+    "modernFrontendShell": "Modern frontend shell",
+    "dashboard": "Dashboard",
+    "homeRoute": "Home route",
+    "loadingGreeting": "Loading greeting...",
+    "edit": "Edit",
+    "delete": "Delete",
+    "restore": "Restore",
+    "new": "New",
+    "archive": "Archive",
+    "deleteConfirm": "Delete this habit?",
     "password": "Password",
     "confirmPassword": "Confirm password",
     "signIn": "Sign in",
@@ -72,6 +84,10 @@
     "unit": "Unit",
     "frequency": "Frequency",
     "weeklyCount": "Times per week",
+    "defaultTarget": "20",
+    "defaultUnit": "pcs",
+    "durationPlaceholder": "0 min",
+    "durationUnit": "min",
     "daily": "Daily",
     "custom": "Specific days",
     "weekly": "N times per week",
@@ -87,6 +103,13 @@
     "requiredTarget": "Target is required",
     "requiredDays": "Choose at least one day",
     "requiredWeeklyCount": "Enter a number of times",
+    "pageTitle": "Habits",
+    "pageSubtitle": "Your goals and habits",
+    "types": {
+      "boolean": "Boolean",
+      "numeric": "Numeric",
+      "duration": "Duration"
+    },
     "categories": {
       "all": "All",
       "health": "Health",
@@ -96,6 +119,16 @@
   },
   "board": {
     "title": "Daily Tracker",
+    "sectionTitle": "Board",
     "noHabits": "No habits yet. Create one to get started!"
+  },
+  "days": {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun"
   }
 }
