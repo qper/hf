@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Download, FilePlus, Shield } from 'lucide-react'
+import { Download, FilePlus, Shield, CheckCircle2 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,9 +35,12 @@ const initialRecoveryCodes = Array.from(
 )
 
 export function RegisterPage() {
+  const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
   const [accepted, setAccepted] = useState(false)
+  const [error, setError] = useState<string>('')
+  const [copySuccess, setCopySuccess] = useState(false)
 
   const {
     register,
@@ -48,6 +52,7 @@ export function RegisterPage() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setAccepted(false)
+    setError('')
     try {
       const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
@@ -60,31 +65,57 @@ export function RegisterPage() {
       })
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage =
+          errorData.message || 'Ошибка при регистрации. Попробуйте позже.'
+        setError(errorMessage)
         return
       }
 
       const data = await response.json()
       setRecoveryCodes(data.recovery_codes || initialRecoveryCodes)
       setIsDialogOpen(true)
-    } catch {
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Ошибка подключения. Попробуйте позже.'
+      setError(errorMessage)
       setRecoveryCodes(initialRecoveryCodes)
       setIsDialogOpen(true)
     }
   }
 
   const copyAll = async () => {
-    await navigator.clipboard.writeText(recoveryCodes.join('\n'))
+    try {
+      await navigator.clipboard.writeText(recoveryCodes.join('\n'))
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Ошибка при копировании кодов.',
+      )
+    }
   }
 
   const downloadCodes = () => {
-    const blob = new Blob([recoveryCodes.join('\n')], {
-      type: 'text/plain;charset=utf-8',
-    })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = 'recovery-codes.txt'
-    link.click()
-    URL.revokeObjectURL(link.href)
+    try {
+      const blob = new Blob([recoveryCodes.join('\n')], {
+        type: 'text/plain;charset=utf-8',
+      })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'recovery-codes.txt'
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Ошибка при скачивании кодов.',
+      )
+    }
+  }
+
+  const handleContinue = () => {
+    setIsDialogOpen(false)
+    navigate({ to: '/board' })
   }
 
   return (
@@ -101,6 +132,12 @@ export function RegisterPage() {
         </div>
 
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          {error && (
+            <div className="rounded-lg border border-rose-800 bg-rose-900/20 p-3 text-sm text-rose-400">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-2">
             <label
               htmlFor="username"
@@ -200,7 +237,15 @@ export function RegisterPage() {
                   onClick={copyAll}
                   className="w-full sm:w-auto"
                 >
-                  <Shield className="mr-2 h-4 w-4" /> Копировать все
+                  {copySuccess ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Скопировано!
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="mr-2 h-4 w-4" /> Копировать все
+                    </>
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -237,6 +282,7 @@ export function RegisterPage() {
                 <Button
                   type="button"
                   disabled={!accepted}
+                  onClick={handleContinue}
                   className="w-full sm:w-auto"
                 >
                   Продолжить
