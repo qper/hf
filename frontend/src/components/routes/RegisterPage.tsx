@@ -73,10 +73,7 @@ export function RegisterPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        const errorMessage =
-          errorData?.message ||
-          errorData?.error ||
-          t('errors.registrationFailed')
+        const errorMessage = auth.getAuthErrorMessage(response.status, errorData, t)
         setError(errorMessage)
         return
       }

@@ -37,11 +37,6 @@ export function LoginPage() {
       const today = new Date().toISOString().split('T')[0]
       navigate({ to: '/board/$date', params: { date: today } })
     } catch (error) {
-      if (error instanceof Response && error.status === 401) {
-        setErrorMessage(t('errors.invalidCredentials'))
-        return
-      }
-
       if (error instanceof Error && error.message === 'session_expired') {
         setErrorMessage(t('errors.sessionExpired'))
         return
@@ -49,11 +44,7 @@ export function LoginPage() {
 
       if (error instanceof Response) {
         const data = await error.json().catch(() => ({}))
-        setErrorMessage(
-          typeof data?.error === 'string'
-            ? data.error
-            : t('errors.loginFailed'),
-        )
+        setErrorMessage(auth.getAuthErrorMessage(error.status, data, t))
         return
       }
 
