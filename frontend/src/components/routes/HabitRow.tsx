@@ -1,4 +1,4 @@
-import { BoardHabit } from '@/api/board'
+import type { BoardHabit } from '@/api/board'
 import { BooleanHabitToggle } from './BooleanHabitToggle'
 import { NumericHabitInput } from './NumericHabitInput'
 import { DurationHabitInput } from './DurationHabitInput'

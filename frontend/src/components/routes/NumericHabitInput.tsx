@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus } from 'lucide-react'
-import { useState, ChangeEvent, KeyboardEvent } from 'react'
-import { createEntry, Board, BoardHabit } from '@/api/board'
+import { useState } from 'react'
+import { createEntry } from '@/api/board'
+import type { ChangeEvent, KeyboardEvent } from 'react'
+import type { Board, BoardHabit } from '@/api/board'
 
 type NumericHabitInputProps = {
   habit: BoardHabit

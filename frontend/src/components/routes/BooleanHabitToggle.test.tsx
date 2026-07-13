@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BooleanHabitToggle } from './BooleanHabitToggle'
 import { describe, it, expect } from 'vitest'
-import { BoardHabit } from '@/api/board'
+import type { BoardHabit } from '@/api/board'
 import type { ReactNode } from 'react'
 
 const mockHabit: BoardHabit = {
@@ -71,7 +71,7 @@ describe('BooleanHabitToggle', () => {
   })
 
   it('is disabled when isEditable is false', () => {
-    render(
+    const { container } = render(
       <BooleanHabitToggle
         habit={mockHabit}
         date="2026-07-13"
@@ -79,11 +79,8 @@ describe('BooleanHabitToggle', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const buttons = screen.queryAllByRole('button')
-    expect(buttons.length).toBeGreaterThan(0)
-    if (buttons[0]) {
-      expect((buttons[0] as HTMLButtonElement).disabled).toBe(true)
-    }
+    const button = container.querySelector('button')
+    expect(button?.disabled).toBe(true)
   })
 
   it('has min dimensions of 44x44 for touch targets', () => {

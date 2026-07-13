@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NumericHabitInput } from './NumericHabitInput'
 import { describe, it, expect } from 'vitest'
-import { BoardHabit } from '@/api/board'
+import type { BoardHabit } from '@/api/board'
 import type { ReactNode } from 'react'
 
 const mockHabit: BoardHabit = {
