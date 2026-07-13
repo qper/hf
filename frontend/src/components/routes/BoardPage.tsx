@@ -1,9 +1,9 @@
 import { getBoard } from '@/api/board'
 import { DateNavBar } from './DateNavBar'
+import { HabitRow } from './HabitRow'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CheckCircle2, Circle, Zap } from 'lucide-react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -74,41 +74,12 @@ function BoardPageComponent({ date }: BoardPageProps) {
             </p>
           ) : (
             board.habits.map((habit) => (
-              <div
+              <HabitRow
                 key={habit.id}
-                className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4 hover:border-zinc-700 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-zinc-100 truncate">
-                        {habit.name}
-                      </h3>
-                      {habit.streak > 0 && (
-                        <div className="flex items-center gap-1 text-xs bg-orange-500/10 text-orange-400 px-2 py-1 rounded">
-                          <Zap className="h-3 w-3" />
-                          {habit.streak}
-                        </div>
-                      )}
-                    </div>
-                    {habit.description && (
-                      <p className="text-xs text-zinc-500">{habit.description}</p>
-                    )}
-                  </div>
-                  <button
-                    className="flex-shrink-0 p-1"
-                    onClick={() => {
-                      // TODO: Handle habit completion toggle
-                    }}
-                  >
-                    {habit.is_completed ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-500" />
-                    ) : (
-                      <Circle className="h-6 w-6 text-zinc-500 hover:text-zinc-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
+                habit={habit}
+                date={currentDate}
+                isEditable={board.is_editable}
+              />
             ))
           )}
         </div>
