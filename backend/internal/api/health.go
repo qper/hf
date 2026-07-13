@@ -49,6 +49,10 @@ type EntryService interface {
 	Delete(ctx context.Context, userID string, entryID string) (*domain.Entry, error)
 }
 
+type StreakService interface {
+	GetStreak(ctx context.Context, userID string, habitID string, today string) (*domain.Streak, error)
+}
+
 type CategoryService interface {
 	Create(ctx context.Context, userID string, req domain.CreateCategoryRequest) (*domain.Category, error)
 	List(ctx context.Context, userID string) ([]domain.Category, error)
@@ -77,6 +81,7 @@ type Handler struct {
 	habitService    HabitService
 	boardService    BoardService
 	entryService    EntryService
+	streakService   StreakService
 	categoryService CategoryService
 	dbChecker       DBChecker
 }
@@ -97,8 +102,8 @@ func NewHandlerWithCategory(healthService *service.HealthService, version string
 	return &Handler{healthService: healthService, version: version, authService: authService, categoryService: categoryService}
 }
 
-func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService, boardService BoardService, entryService EntryService) *Handler {
-	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService, boardService: boardService, entryService: entryService}
+func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService, boardService BoardService, entryService EntryService, streakService StreakService) *Handler {
+	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService, boardService: boardService, entryService: entryService, streakService: streakService}
 }
 
 func (h *Handler) WithDBChecker(dbChecker DBChecker) *Handler {
@@ -135,6 +140,7 @@ func (h *Handler) Register(e *echo.Echo) {
 	apiGroup.POST("/habits", h.CreateHabit)
 	apiGroup.GET("/habits/:id", h.GetHabit)
 	apiGroup.GET("/board/:date", h.GetBoard)
+	apiGroup.GET("/habits/:id/streak", h.GetHabitStreak)
 	apiGroup.POST("/entries", h.CreateEntry)
 	apiGroup.PUT("/entries/:id", h.UpdateEntry)
 	apiGroup.DELETE("/entries/:id", h.DeleteEntry)
@@ -511,6 +517,29 @@ func (h *Handler) DeleteEntry(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "entry not found"})
 	}
 	return c.JSON(http.StatusOK, entry)
+}
+
+func (h *Handler) GetHabitStreak(c echo.Context) error {
+	if h.streakService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "streak service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	today := time.Now().UTC().Format("2006-01-02")
+	streak, err := h.streakService.GetStreak(c.Request().Context(), userID, c.Param("id"), today)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrStreakNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not load streak"})
+		}
+	}
+	return c.JSON(http.StatusOK, streak)
 }
 
 func (h *Handler) ReorderHabits(c echo.Context) error {

@@ -116,6 +116,42 @@ func (r *EntryRepository) DeleteEntry(ctx context.Context, userID string, entryI
 	return &entry, nil
 }
 
+func (r *EntryRepository) ListEntriesByHabit(ctx context.Context, userID string, habitID string) ([]domain.Entry, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, habit_id, entry_date, completed, value, note, created_at, updated_at
+		FROM habit_entries
+		WHERE habit_id = $1
+		ORDER BY entry_date
+	`, habitID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var entries []domain.Entry
+	for rows.Next() {
+		var entry domain.Entry
+		var value sql.NullFloat64
+		var note sql.NullString
+		if err := rows.Scan(&entry.ID, &entry.HabitID, &entry.Date, &entry.Completed, &value, &note, &entry.CreatedAt, &entry.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if value.Valid {
+			entryValue := value.Float64
+			entry.Value = &entryValue
+		}
+		if note.Valid {
+			noteValue := note.String
+			entry.Note = &noteValue
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return entries, nil
+}
+
 func (r *EntryRepository) GetHabitByID(ctx context.Context, userID string, habitID string) (*domain.Habit, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, category_id, name, description, color, type, frequency, target_value, unit, sort_order, is_archived, is_deleted, created_at, updated_at, deleted_at
