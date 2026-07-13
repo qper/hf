@@ -39,6 +39,10 @@ type HabitService interface {
 	Reorder(ctx context.Context, userID string, ids []string) ([]domain.Habit, error)
 }
 
+type BoardService interface {
+	GetBoard(ctx context.Context, userID string, date string, userTZ *time.Location) (*domain.Board, error)
+}
+
 type CategoryService interface {
 	Create(ctx context.Context, userID string, req domain.CreateCategoryRequest) (*domain.Category, error)
 	List(ctx context.Context, userID string) ([]domain.Category, error)
@@ -65,6 +69,7 @@ type Handler struct {
 	version         string
 	authService     AuthService
 	habitService    HabitService
+	boardService    BoardService
 	categoryService CategoryService
 	dbChecker       DBChecker
 }
@@ -85,8 +90,8 @@ func NewHandlerWithCategory(healthService *service.HealthService, version string
 	return &Handler{healthService: healthService, version: version, authService: authService, categoryService: categoryService}
 }
 
-func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService) *Handler {
-	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService}
+func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService, boardService BoardService) *Handler {
+	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService, boardService: boardService}
 }
 
 func (h *Handler) WithDBChecker(dbChecker DBChecker) *Handler {
@@ -122,6 +127,7 @@ func (h *Handler) Register(e *echo.Echo) {
 	apiGroup.GET("/habits", h.ListHabits)
 	apiGroup.POST("/habits", h.CreateHabit)
 	apiGroup.GET("/habits/:id", h.GetHabit)
+	apiGroup.GET("/board/:date", h.GetBoard)
 	apiGroup.PUT("/habits/:id", h.UpdateHabit)
 	apiGroup.DELETE("/habits/:id", h.DeleteHabit)
 	apiGroup.PATCH("/habits/:id/archive", h.ArchiveHabit)
