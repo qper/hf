@@ -1,4 +1,5 @@
 import type { BoardHabit } from '@/api/board'
+import type { CSSProperties } from 'react'
 import { BooleanHabitToggle } from './BooleanHabitToggle'
 import { NumericHabitInput } from './NumericHabitInput'
 import { DurationHabitInput } from './DurationHabitInput'
@@ -32,7 +33,7 @@ export function HabitRow({
 
   return (
     <div
-      style={shouldShowPulse ? { '--habit-color-alpha': habitColor } as React.CSSProperties : undefined}
+      style={shouldShowPulse ? { '--habit-color-alpha': habitColor } as CSSProperties : undefined}
     >
       <div
         className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4 hover:border-zinc-700 transition-colors"
