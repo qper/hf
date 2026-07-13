@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import * as auth from '@/api/auth'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Введите username'),
@@ -16,6 +17,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
+  const navigate = useNavigate()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const {
     register,
@@ -28,24 +30,30 @@ export function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setErrorMessage(null)
     try {
-      const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setErrorMessage('Неверный логин или пароль')
-          return
-        }
-
-        setErrorMessage('Не удалось выполнить вход. Попробуйте позже.')
+      await auth.login(values.username, values.password)
+      const today = new Date().toISOString().split('T')[0]
+      navigate({ to: '/board/$date', params: { date: today } })
+    } catch (error) {
+      if (error instanceof Response && error.status === 401) {
+        setErrorMessage('Неверный логин или пароль')
         return
       }
 
-      // TODO: continue on successful login
-    } catch {
+      if (error instanceof Error && error.message === 'session_expired') {
+        setErrorMessage('Сессия истекла. Войдите снова.')
+        return
+      }
+
+      if (error instanceof Response) {
+        const data = await error.json().catch(() => ({}))
+        setErrorMessage(
+          typeof data?.error === 'string'
+            ? data.error
+            : 'Не удалось выполнить вход. Попробуйте позже.',
+        )
+        return
+      }
+
       setErrorMessage('Ошибка сети. Попробуйте позже.')
     }
   }

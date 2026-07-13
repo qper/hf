@@ -8,6 +8,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import * as auth from '@/api/auth'
 import {
   DialogClose,
   DialogContent,
@@ -19,7 +20,10 @@ import {
 const registerSchema = z
   .object({
     username: z.string().min(3, 'Минимум 3 символа'),
-    password: z.string().min(8, 'Минимум 8 символов'),
+    password: z
+      .string()
+      .min(8, 'Минимум 8 символов')
+      .regex(/[0-9]/, 'Нужна хотя бы одна цифра'),
     confirmPassword: z.string().min(1, 'Подтвердите пароль'),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -67,12 +71,15 @@ export function RegisterPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         const errorMessage =
-          errorData.message || 'Ошибка при регистрации. Попробуйте позже.'
+          errorData?.message ||
+          errorData?.error ||
+          'Ошибка при регистрации. Попробуйте позже.'
         setError(errorMessage)
         return
       }
 
       const data = await response.json()
+      await auth.login(values.username, values.password)
       setRecoveryCodes(data.recovery_codes || initialRecoveryCodes)
       setIsDialogOpen(true)
     } catch (err) {
