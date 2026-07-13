@@ -67,7 +67,6 @@ test.describe('Board - Read-only mode and Swipe Navigation', () => {
       if (boundingBox) {
         const startX = boundingBox.x + boundingBox.width * 0.7
         const startY = boundingBox.y + boundingBox.height / 2
-        const endX = boundingBox.x + boundingBox.width * 0.2
         
         // Simulate swipe left (move right to left)
         await page.touchscreen.tap(startX, startY)
