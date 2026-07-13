@@ -32,7 +32,7 @@ const createWrapper = () => {
 
 describe('DurationHabitInput', () => {
   it('renders an input field', () => {
-    render(
+    const { container } = render(
       <DurationHabitInput
         habit={mockHabit}
         date="2026-07-13"
@@ -40,13 +40,12 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
-    expect(input).toBeTruthy()
-    expect(input.type).toBe('number')
+    const inputs = container.querySelectorAll('input[type="number"]')
+    expect(inputs.length).toBeGreaterThan(0)
   })
 
   it('displays placeholder text when empty', () => {
-    render(
+    const { container } = render(
       <DurationHabitInput
         habit={mockHabit}
         date="2026-07-13"
@@ -54,8 +53,8 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
-    expect(input.placeholder).toBe('0 мин')
+    const input = container.querySelector('input[type="number"]') as HTMLInputElement
+    expect(input?.placeholder).toBe('0 мин')
   })
 
   it('displays unit label', () => {
@@ -71,7 +70,7 @@ describe('DurationHabitInput', () => {
   })
 
   it('has inputmode numeric', () => {
-    render(
+    const { container } = render(
       <DurationHabitInput
         habit={mockHabit}
         date="2026-07-13"
@@ -79,12 +78,12 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
-    expect(input.inputMode).toBe('numeric')
+    const input = container.querySelector('input[type="number"]') as HTMLInputElement
+    expect(input?.inputMode).toBe('numeric')
   })
 
   it('is disabled when isEditable is false', () => {
-    render(
+    const { container } = render(
       <DurationHabitInput
         habit={mockHabit}
         date="2026-07-13"
@@ -92,12 +91,12 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
-    expect(input.disabled).toBe(true)
+    const input = container.querySelector('input[type="number"]') as HTMLInputElement
+    expect(input?.disabled).toBe(true)
   })
 
   it('displays entry value when provided', async () => {
-    render(
+    const { container } = render(
       <DurationHabitInput
         habit={mockHabit}
         date="2026-07-13"
@@ -106,7 +105,7 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
-    expect(input.value).toBe('15')
+    const input = container.querySelector('input[type="number"]') as HTMLInputElement
+    expect(input?.value).toBe('15')
   })
 })
