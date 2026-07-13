@@ -14,6 +14,38 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func TestResolvePrivateKeyPathUsesWorkingDirectoryFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get working dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldWD)
+		_ = os.Unsetenv("JWT_PRIVATE_KEY_PATH")
+	}()
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	if err := os.Unsetenv("JWT_PRIVATE_KEY_PATH"); err != nil {
+		t.Fatalf("unset env: %v", err)
+	}
+
+	if err := os.MkdirAll(filepath.Join(tmpDir, "secrets"), 0o755); err != nil {
+		t.Fatalf("create secrets dir: %v", err)
+	}
+	keyPath := filepath.Join(tmpDir, "secrets", "jwt.key")
+	if err := os.WriteFile(keyPath, []byte("dummy"), 0o600); err != nil {
+		t.Fatalf("write key: %v", err)
+	}
+
+	resolved := resolvePrivateKeyPath()
+	if resolved != keyPath {
+		t.Fatalf("expected %s, got %s", keyPath, resolved)
+	}
+}
+
 func TestCreateAccessTokenUsesPrivateKeyAndVerifiesWithPublicKey(t *testing.T) {
 	tmpDir := t.TempDir()
 	privatePath := filepath.Join(tmpDir, "jwt.key")
