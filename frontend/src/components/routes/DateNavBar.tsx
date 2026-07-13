@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,9 +7,10 @@ type DateNavBarProps = {
   date: string
   onDateChange: (date: string) => void
   progress?: { done: number; total: number }
+  isEditable?: boolean
 }
 
-export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
+export function DateNavBar({ date, onDateChange, progress, isEditable = true }: DateNavBarProps) {
   const { i18n, t } = useTranslation()
   const today = new Date().toISOString().split('T')[0]
   const isToday = date === today
@@ -58,21 +59,31 @@ export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
           variant="ghost"
           size="sm"
           onClick={handlePrevDay}
-          className="text-zinc-400 hover:text-zinc-100"
+          disabled={!isEditable}
+          className="text-zinc-400 hover:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!isEditable ? 'Вне окна редактирования' : ''}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
         <div className="text-center">
-          <p className="text-sm text-zinc-400">{getLocalizedDate()}</p>
+          <div className="flex items-center justify-center gap-1">
+            <p className="text-sm text-zinc-400">{getLocalizedDate()}</p>
+            {!isEditable && (
+              <div title="Вне окна редактирования" className="cursor-help">
+                <Lock className="h-4 w-4 text-zinc-500" />
+              </div>
+            )}
+          </div>
         </div>
 
         <Button
           variant="ghost"
           size="sm"
           onClick={handleNextDay}
-          disabled={!canGoForward}
+          disabled={!isEditable || !canGoForward}
           className="text-zinc-400 hover:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!isEditable ? 'Вне окна редактирования' : ''}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -85,7 +96,9 @@ export function DateNavBar({ date, onDateChange, progress }: DateNavBarProps) {
             variant="outline"
             size="sm"
             onClick={handleToday}
-            className="text-xs"
+            disabled={!isEditable}
+            className="text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!isEditable ? 'Вне окна редактирования' : ''}
           >
             {t('common.today')}
           </Button>

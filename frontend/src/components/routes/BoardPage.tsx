@@ -4,7 +4,8 @@ import { HabitRow } from './HabitRow'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import type { TouchEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type BoardPageProps = {
@@ -17,6 +18,10 @@ function BoardPageComponent({ date }: BoardPageProps) {
   const today = new Date().toISOString().split('T')[0]
   const currentDate = date || today
 
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
   const { data: board, isPending, error } = useQuery({
     queryKey: ['board', currentDate],
     queryFn: () => getBoard(currentDate),
@@ -24,13 +29,51 @@ function BoardPageComponent({ date }: BoardPageProps) {
 
   const handleDateChange = useCallback(
     (newDate: string) => {
+      setIsTransitioning(true)
       navigate({
         to: '/board/$date',
         params: { date: newDate },
       })
+      // Reset animation after transition
+      setTimeout(() => setIsTransitioning(false), 100)
     },
     [navigate],
   )
+
+  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    if (!board || isTransitioning) return
+
+    const touchEndX = e.changedTouches[0].clientX
+    const touchEndY = e.changedTouches[0].clientY
+
+    const deltaX = touchStartX.current - touchEndX
+    const deltaY = Math.abs(touchStartY.current - touchEndY)
+
+    // Only process horizontal swipes, ignore vertical scrolls
+    if (Math.abs(deltaX) < 50 || deltaY > Math.abs(deltaX)) {
+      return
+    }
+
+    const d = new Date(currentDate)
+
+    // Swipe left: go to next day (if < today)
+    if (deltaX > 50) {
+      if (currentDate < today) {
+        d.setDate(d.getDate() + 1)
+        handleDateChange(d.toISOString().split('T')[0])
+      }
+    }
+    // Swipe right: go to previous day
+    else if (deltaX < -50) {
+      d.setDate(d.getDate() - 1)
+      handleDateChange(d.toISOString().split('T')[0])
+    }
+  }
 
   if (error) {
     return (
@@ -41,7 +84,13 @@ function BoardPageComponent({ date }: BoardPageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className={`space-y-6 transition-all duration-100 ease-out ${
+        isTransitioning ? 'opacity-70' : 'opacity-100'
+      }`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div>
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
           Board
@@ -53,6 +102,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
         date={currentDate}
         onDateChange={handleDateChange}
         progress={board?.progress}
+        isEditable={board?.is_editable ?? true}
       />
 
       {isPending ? (

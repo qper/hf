@@ -132,13 +132,14 @@ export function NumericHabitInput({
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          className="w-16 text-center text-sm bg-zinc-800 text-zinc-100 rounded px-2 py-1 border border-zinc-700 focus:border-cyan-500 outline-none"
+          className="w-16 text-center text-sm bg-zinc-800 text-zinc-100 rounded px-2 py-1 border border-zinc-700 focus:border-cyan-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!isEditable}
         />
       ) : (
         <button
           onClick={() => isEditable && setIsEditing(true)}
           disabled={!isEditable}
-          className="flex-1 text-center text-sm text-zinc-300 px-2 py-1 rounded hover:bg-zinc-800/50 disabled:cursor-not-allowed"
+          className="flex-1 text-center text-sm text-zinc-300 px-2 py-1 rounded hover:bg-zinc-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             minHeight: '44px',
             display: 'flex',
