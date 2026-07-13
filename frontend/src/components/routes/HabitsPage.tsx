@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { MoreHorizontal, GripVertical, Archive, Trash2, Plus } from 'lucide-react'
+import { HabitFormDialog, type HabitFormValues } from './HabitFormDialog'
 
 type Habit = {
   id: string
@@ -8,6 +9,13 @@ type Habit = {
   streak: number
   archived: boolean
   category: string
+  type: 'boolean' | 'numeric' | 'duration'
+  color: string
+  targetValue?: number
+  unit?: string
+  frequency: 'daily' | 'custom' | 'weekly'
+  selectedDays?: string[]
+  weeklyCount?: string
 }
 
 const initialHabits: Habit[] = [
@@ -18,6 +26,9 @@ const initialHabits: Habit[] = [
     streak: 7,
     archived: false,
     category: 'All',
+    type: 'boolean',
+    color: '#14b8a6',
+    frequency: 'daily',
   },
   {
     id: '2',
@@ -26,6 +37,11 @@ const initialHabits: Habit[] = [
     streak: 4,
     archived: true,
     category: 'Health',
+    type: 'numeric',
+    color: '#f59e0b',
+    targetValue: 5,
+    unit: 'км',
+    frequency: 'weekly',
   },
 ]
 
@@ -35,6 +51,10 @@ export function HabitsPage() {
   const [activeCategory, setActiveCategory] = useState('All')
   const [habits, setHabits] = useState(initialHabits)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
 
   const visibleHabits = useMemo(() => {
     return habits.filter((habit) => {
@@ -62,6 +82,44 @@ export function HabitsPage() {
     setHabits((current) => current.filter((habit) => habit.id !== habitId))
   }
 
+  const openCreateDialog = () => {
+    setEditingHabit(null)
+    setDialogMode('create')
+    setIsDialogOpen(true)
+  }
+
+  const openEditDialog = (habit: Habit) => {
+    setEditingHabit(habit)
+    setDialogMode('edit')
+    setIsDialogOpen(true)
+  }
+
+  const handleSaveHabit = (values: HabitFormValues) => {
+    const payload: Habit = {
+      id: editingHabit?.id ?? `${Date.now()}`,
+      name: values.name,
+      icon: values.icon,
+      streak: editingHabit?.streak ?? 0,
+      archived: editingHabit?.archived ?? false,
+      category: values.category || 'All',
+      type: values.type,
+      color: values.color,
+      targetValue: values.targetValue ? Number(values.targetValue) : undefined,
+      unit: values.type === 'duration' ? 'мин' : values.unit || undefined,
+      frequency: values.frequency,
+      selectedDays: values.selectedDays,
+      weeklyCount: values.weeklyCount,
+    }
+
+    setHabits((current) => {
+      if (editingHabit) {
+        return current.map((habit) => (habit.id === editingHabit.id ? payload : habit))
+      }
+      return [...current, payload]
+    })
+    setIsDialogOpen(false)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -69,7 +127,11 @@ export function HabitsPage() {
           <h2 className="text-3xl font-semibold text-white">Привычки</h2>
           <p className="text-sm text-zinc-400">Твои цели и привычки</p>
         </div>
-        <button className="flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-cyan-400">
+        <button
+          type="button"
+          onClick={openCreateDialog}
+          className="flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-cyan-400"
+        >
           <Plus size={16} />
           Новая
         </button>
@@ -126,12 +188,21 @@ export function HabitsPage() {
                 <button
                   type="button"
                   aria-label="more"
+                  onClick={() => setMenuOpenId((current) => (current === habit.id ? null : habit.id))}
                   className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
                 >
                   <MoreHorizontal size={16} />
                 </button>
-                <div className="absolute right-0 z-10 mt-2 hidden min-w-[140px] rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-lg">
-                  <button type="button" role="menuitem" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800">
+                <div className={`absolute right-0 z-10 mt-2 min-w-[140px] rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-lg ${menuOpenId === habit.id ? 'block' : 'hidden'}`}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpenId(null)
+                      openEditDialog(habit)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+                  >
                     Edit
                   </button>
                   <button
@@ -150,6 +221,25 @@ export function HabitsPage() {
           </div>
         ))}
       </div>
+
+      <HabitFormDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        mode={dialogMode}
+        onSubmit={handleSaveHabit}
+        defaultValues={editingHabit ? {
+          name: editingHabit.name,
+          type: editingHabit.type,
+          category: editingHabit.category,
+          color: editingHabit.color,
+          icon: editingHabit.icon,
+          targetValue: editingHabit.targetValue?.toString() ?? '',
+          unit: editingHabit.unit ?? '',
+          frequency: editingHabit.frequency,
+          selectedDays: editingHabit.selectedDays ?? [],
+          weeklyCount: editingHabit.weeklyCount ?? '1',
+        } : undefined}
+      />
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
         <button

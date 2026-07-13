@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { HabitsPage } from './HabitsPage'
+import { reorderHabits } from './habitReorder'
 
 describe('HabitsPage', () => {
   it('hides an archived habit from the active list', () => {
@@ -21,5 +22,17 @@ describe('HabitsPage', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /delete/i }))
 
     expect(confirmSpy).toHaveBeenCalled()
+  })
+
+  it('moves a habit to the front of the list', () => {
+    const habits = [
+      { id: '1', name: 'First' },
+      { id: '2', name: 'Second' },
+      { id: '3', name: 'Third' },
+    ]
+
+    const reordered = reorderHabits(habits, '3', '1')
+
+    expect(reordered.map((habit) => habit.id)).toEqual(['3', '1', '2'])
   })
 })
