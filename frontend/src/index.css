@@ -40,3 +40,17 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Streak Pulse Animation */
+@keyframes streakPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--habit-color-alpha);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px var(--habit-color-alpha);
+  }
+}
+
+.streak-pulse {
+  animation: streakPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

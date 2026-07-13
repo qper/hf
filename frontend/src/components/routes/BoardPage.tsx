@@ -106,7 +106,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
       />
 
       {isPending ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="rounded-lg border border-zinc-800 p-4">
               <div className="space-y-2">
@@ -117,7 +117,7 @@ function BoardPageComponent({ date }: BoardPageProps) {
           ))}
         </div>
       ) : board ? (
-        <div className="space-y-3">
+        <div className="space-y-0">
           {board.habits.length === 0 ? (
             <p className="text-sm text-zinc-400 text-center py-8">
               {t('board.noHabits')}
