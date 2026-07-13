@@ -175,7 +175,7 @@ function SortableHabitRow({
           <button
             type="button"
             aria-label="more"
-            onClick={() => setMenuOpenId((current) => (current === habit.id ? null : habit.id))}
+            onClick={() => setMenuOpenId(menuOpenId === habit.id ? null : habit.id)}
             className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
           >
             <MoreHorizontal size={16} />
