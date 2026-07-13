@@ -190,6 +190,7 @@ export function HabitFormDialog({
                   <input
                     type="radio"
                     value={type}
+                    aria-label={typeLabels[type]}
                     disabled={mode === 'edit'}
                     {...register('type')}
                   />

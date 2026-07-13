@@ -37,6 +37,7 @@
     "modernFrontendShell": "Modern frontend shell",
     "dashboard": "Dashboard",
     "homeRoute": "Home route",
+    "homeGreeting": "Welcome back to HabitFlow",
     "loadingGreeting": "Loading greeting...",
     "edit": "Edit",
     "delete": "Delete",

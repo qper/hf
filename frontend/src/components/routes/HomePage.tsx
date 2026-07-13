@@ -1,16 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-const fetchGreeting = async () => {
+const fetchGreeting = async (greeting: string) => {
   await new Promise((resolve) => window.setTimeout(resolve, 100))
-  return 'Welcome back to HabitFlow'
+  return greeting
 }
 
 export function HomePage() {
   const { t } = useTranslation()
   const { data, isPending } = useQuery({
-    queryKey: ['home-greeting'],
-    queryFn: fetchGreeting,
+    queryKey: ['home-greeting', t('common.homeGreeting')],
+    queryFn: () => fetchGreeting(t('common.homeGreeting')),
     staleTime: 30_000,
     retry: 2,
   })

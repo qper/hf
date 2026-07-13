@@ -26,12 +26,12 @@ describe('Auth pages', () => {
   it('shows error on wrong password', async () => {
     renderWithRouter('/login')
 
-    await screen.findByLabelText(/username/i)
+    await screen.findByLabelText(/логин|username/i)
 
-    fireEvent.input(screen.getByLabelText(/username/i), {
+    fireEvent.input(screen.getByLabelText(/логин|username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
+    fireEvent.input(screen.getByLabelText(/^пароль$/i), {
       target: { value: 'wrong' },
     })
     fireEvent.submit(screen.getByRole('button', { name: /войти/i }))
@@ -49,10 +49,10 @@ describe('Auth pages', () => {
 
     renderWithRouter('/login')
 
-    fireEvent.input(screen.getByLabelText(/username/i), {
+    fireEvent.input(screen.getByLabelText(/логин|username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
+    fireEvent.input(screen.getByLabelText(/^пароль$/i), {
       target: { value: 'Password1!' },
     })
     fireEvent.submit(screen.getByRole('button', { name: /войти/i }))
@@ -65,15 +65,15 @@ describe('Auth pages', () => {
   it('shows inline error for password mismatch on register page', async () => {
     renderWithRouter('/register')
 
-    await screen.findByLabelText(/подтверд|confirm/i)
+    await screen.findByLabelText(/^подтвердите пароль$/i)
 
-    fireEvent.input(screen.getByLabelText(/username/i), {
+    fireEvent.input(screen.getByLabelText(/логин|username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
+    fireEvent.input(screen.getByLabelText(/^пароль$/i), {
       target: { value: 'Password1!' },
     })
-    fireEvent.input(screen.getByLabelText(/подтверд|confirm/i), {
+    fireEvent.input(screen.getByLabelText(/^подтвердите пароль$/i), {
       target: { value: 'Password2!' },
     })
     fireEvent.submit(
@@ -86,15 +86,15 @@ describe('Auth pages', () => {
   it('shows a password policy error for weak passwords', async () => {
     renderWithRouter('/register')
 
-    await screen.findByLabelText(/пароль|password/i)
+    await screen.findByLabelText(/^пароль$/i)
 
-    fireEvent.input(screen.getByLabelText(/username/i), {
+    fireEvent.input(screen.getByLabelText(/логин|username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
+    fireEvent.input(screen.getByLabelText(/^пароль$/i), {
       target: { value: 'short' },
     })
-    fireEvent.input(screen.getByLabelText(/подтверд|confirm/i), {
+    fireEvent.input(screen.getByLabelText(/^подтвердите пароль$/i), {
       target: { value: 'short' },
     })
     fireEvent.submit(
