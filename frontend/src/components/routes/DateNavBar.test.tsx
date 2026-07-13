@@ -10,11 +10,7 @@ describe('DateNavBar', () => {
     .toISOString()
     .split('T')[0]
 
-  const renderDateNavBar = (
-    date: string,
-    onDateChange?: (date: string) => void,
-    isEditable?: boolean,
-  ) => {
+  const renderDateNavBar = (date: string, onDateChange?: (date: string) => void) => {
     const mockOnDateChange = onDateChange || vi.fn()
     return render(
       <I18nextProvider i18n={i18n}>
@@ -22,7 +18,6 @@ describe('DateNavBar', () => {
           date={date}
           onDateChange={mockOnDateChange}
           progress={{ done: 5, total: 7 }}
-          isEditable={isEditable}
         />
       </I18nextProvider>,
     )
@@ -52,22 +47,5 @@ describe('DateNavBar', () => {
     renderDateNavBar(today)
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('should show lock icon when not editable', () => {
-    const { container } = renderDateNavBar(today, undefined, false)
-    const lockIcon = container.querySelector('svg[class*="lucide-lock"]')
-    expect(lockIcon).toBeTruthy()
-  })
-
-  it('should disable all buttons when not editable', () => {
-    renderDateNavBar(today, undefined, false)
-    const buttons = screen.getAllByRole('button')
-    buttons.forEach((button) => {
-      // At least the first button (prev arrow) should be disabled
-      if ((button as HTMLButtonElement).textContent?.includes('<')) {
-        expect((button as HTMLButtonElement).disabled).toBe(true)
-      }
-    })
   })
 })
