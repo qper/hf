@@ -17,7 +17,7 @@ func TestRateLimitEnforcedPerIP(t *testing.T) {
 	e := echo.New()
 	h.Register(e)
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 20; i++ {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		req.RemoteAddr = "1.2.3.4:1234"
@@ -28,16 +28,35 @@ func TestRateLimitEnforcedPerIP(t *testing.T) {
 		}
 	}
 
-	// 6th attempt should be 429
+	// 21st attempt should be 429
 	req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	req.RemoteAddr = "1.2.3.4:1234"
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected 429 on 6th attempt, got %d", rec.Code)
+		t.Fatalf("expected 429 on 21st attempt, got %d", rec.Code)
 	}
 	if rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("expected Retry-After header in 429 response")
+	}
+}
+
+func TestRateLimiterAllowsReasonableBurst(t *testing.T) {
+	h := NewHandler(service.NewHealthService(), "1.0.0")
+	h.authService = stubAuthService{loginErr: service.ErrUnauthorized}
+
+	e := echo.New()
+	h.Register(e)
+
+	for i := 0; i < 10; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req.RemoteAddr = "5.6.7.8:4321"
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 on attempt %d, got %d", i+1, rec.Code)
+		}
 	}
 }

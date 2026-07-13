@@ -122,7 +122,7 @@ func (h *Handler) Register(e *echo.Echo) {
 	})
 	// auth routes with rate limiter, CORS and CSP
 	authGroup := e.Group("/auth")
-	authGroup.Use(NewRateLimiter(5, 15*time.Minute))
+	authGroup.Use(NewRateLimiter(20, 15*time.Minute))
 	authGroup.Use(CORSMiddleware)
 	authGroup.Use(CSPMiddleware)
 	authGroup.POST("/login", h.LoginUser)

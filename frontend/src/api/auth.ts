@@ -89,6 +89,32 @@ export async function authFetch(input: unknown, init: Record<string, unknown> = 
   return res
 }
 
+export function getAuthErrorMessage(
+  status: number,
+  data: unknown,
+  t: (key: string) => string,
+): string {
+  const payload = (data as Record<string, unknown> | null) || {}
+  const message = typeof payload.error === 'string' ? payload.error : ''
+  const detail = typeof payload.message === 'string' ? payload.message : ''
+
+  if (status === 429 || message === 'rate limit exceeded' || detail === 'rate limit exceeded') {
+    return t('errors.rateLimitExceeded')
+  }
+
+  if (status === 401 || message === 'invalid credentials' || detail === 'invalid credentials') {
+    return t('errors.invalidCredentials')
+  }
+
+  if (status === 422 || message === 'invalid registration payload' || detail === 'invalid registration payload') {
+    return `${t('errors.registrationFailed')}: ${t('errors.passwordTooShort')} / ${t('errors.passwordDigit')}`
+  }
+
+  return typeof message === 'string' && message.length > 0
+    ? message
+    : t('errors.loginFailed')
+}
+
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const res = await fetch('/auth/login', {
     method: 'POST',

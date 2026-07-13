@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { ChangeEvent, KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createEntry } from '@/api/board'
 import type { Board, BoardHabit } from '@/api/board'
 
@@ -17,6 +18,7 @@ export function DurationHabitInput({
   isEditable,
   entryValue,
 }: DurationHabitInputProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [inputValue, setInputValue] = useState(entryValue?.toString() ?? '')
 
@@ -98,11 +100,11 @@ export function DurationHabitInput({
         onBlur={handleInputBlur}
         onKeyDown={handleInputKeyDown}
         disabled={!isEditable || createEntryMutation.isPending}
-        placeholder="0 мин"
+        placeholder={t('habits.durationPlaceholder')}
         className="w-24 text-sm bg-zinc-800 text-zinc-100 rounded px-3 py-2 border border-zinc-700 focus:border-cyan-500 outline-none placeholder-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
         min="0"
       />
-      <span className="ml-2 text-xs text-zinc-500">мин</span>
+      <span className="ml-2 text-xs text-zinc-500">{t('habits.durationUnit')}</span>
     </div>
   )
 }

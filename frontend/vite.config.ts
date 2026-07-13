@@ -5,6 +5,19 @@ import tailwindcss from '@tailwindcss/vite'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const backendProxy = {
+  '/api': {
+    target: 'http://localhost:8080',
+    changeOrigin: true,
+    secure: false,
+  },
+  '/auth': {
+    target: 'http://localhost:8080',
+    changeOrigin: true,
+    secure: false,
+  },
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -47,13 +60,10 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
+    proxy: backendProxy,
+  },
+  preview: {
+    proxy: backendProxy,
   },
   test: {
     environment: 'jsdom',

@@ -27,7 +27,6 @@ void i18n
     react: {
       useSuspense: false,
     },
-    lng: 'ru',
   })
 
 export default i18n

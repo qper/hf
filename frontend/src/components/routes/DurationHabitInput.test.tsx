@@ -1,7 +1,9 @@
 import { render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { beforeEach, describe, it, expect } from 'vitest'
+import '@/i18n'
+import i18n from '@/i18n'
 import { DurationHabitInput } from './DurationHabitInput'
-import { describe, it, expect } from 'vitest'
 import type { BoardHabit } from '@/api/board'
 import type { ReactNode } from 'react'
 
@@ -17,6 +19,10 @@ const mockHabit: BoardHabit = {
   streak: 0,
   unit: 'мин',
 }
+
+beforeEach(async () => {
+  await i18n.changeLanguage('ru')
+})
 
 const createWrapper = () => {
   const queryClient = new QueryClient({

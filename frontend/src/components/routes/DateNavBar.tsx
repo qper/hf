@@ -70,7 +70,7 @@ export function DateNavBar({ date, onDateChange, progress, isEditable = true }: 
           <div className="flex items-center justify-center gap-1">
             <p className="text-sm text-zinc-400">{getLocalizedDate()}</p>
             {!isEditable && (
-              <div title="Вне окна редактирования" className="cursor-help">
+              <div title={t('common.editWindowLocked')} className="cursor-help">
                 <Lock className="h-4 w-4 text-zinc-500" />
               </div>
             )}
@@ -98,7 +98,7 @@ export function DateNavBar({ date, onDateChange, progress, isEditable = true }: 
             onClick={handleToday}
             disabled={!isEditable}
             className="text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!isEditable ? 'Вне окна редактирования' : ''}
+            title={!isEditable ? t('common.editWindowLocked') : ''}
           >
             {t('common.today')}
           </Button>

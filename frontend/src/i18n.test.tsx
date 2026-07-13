@@ -11,12 +11,13 @@ function LocaleProbe() {
 
 describe('i18n', () => {
   it('uses russian strings by default and switches languages without reload', async () => {
+    await i18n.changeLanguage('ru')
     render(<LocaleProbe />)
 
     expect(screen.getByText('Главная')).toBeTruthy()
 
     await i18n.changeLanguage('en')
 
-    expect(screen.getByText('Home')).toBeTruthy()
+    expect(await screen.findByText('Home')).toBeTruthy()
   })
 })

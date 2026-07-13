@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Check, Circle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -32,16 +33,16 @@ export type HabitFormValues = {
 
 const colorOptions = ['#14b8a6', '#f59e0b', '#8b5cf6', '#ef4444', '#22c55e', '#3b82f6', '#f97316', '#ec4899', '#64748b', '#e2e8f0']
 const iconOptions = ['Sparkles', 'BookOpen', 'Dumbbell', 'Moon', 'Sun', 'Footprints', 'TreePine', 'Coffee', 'Target', 'Heart']
-const dayOptions = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+const dayOptions = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-const habitSchema = z.object({
-  name: z.string().trim().min(1, 'Название обязательно'),
+const habitSchema = (t: (key: string) => string) => z.object({
+  name: z.string().trim().min(1, t('habits.requiredName')),
   type: z.enum(['boolean', 'numeric', 'duration'], {
-    errorMap: () => ({ message: 'Тип обязателен' }),
+    errorMap: () => ({ message: t('habits.requiredType') }),
   }),
   category: z.string().optional(),
-  color: z.string().min(1, 'Выберите цвет'),
-  icon: z.string().min(1, 'Выберите иконку'),
+  color: z.string().min(1, t('habits.requiredColor')),
+  icon: z.string().min(1, t('habits.requiredIcon')),
   targetValue: z.string().optional(),
   unit: z.string().optional(),
   frequency: z.enum(['daily', 'custom', 'weekly']),
@@ -52,21 +53,21 @@ const habitSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['targetValue'],
-      message: 'Цель обязательна',
+      message: t('habits.requiredTarget'),
     })
   }
   if (data.frequency === 'custom' && (!data.selectedDays || data.selectedDays.length === 0)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['selectedDays'],
-      message: 'Выберите хотя бы один день',
+      message: t('habits.requiredDays'),
     })
   }
   if (data.frequency === 'weekly' && (!data.weeklyCount || Number(data.weeklyCount) <= 0)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['weeklyCount'],
-      message: 'Укажите количество раз',
+      message: t('habits.requiredWeeklyCount'),
     })
   }
 })
@@ -86,6 +87,7 @@ export function HabitFormDialog({
   mode = 'create',
   onSubmit: onSubmitHabit,
 }: HabitFormDialogProps) {
+  const { t } = useTranslation()
   const {
     register,
     handleSubmit,
@@ -94,7 +96,7 @@ export function HabitFormDialog({
     control,
     formState: { errors, isSubmitting },
   } = useForm<HabitFormValues>({
-    resolver: zodResolver(habitSchema),
+    resolver: zodResolver(habitSchema(t)),
     defaultValues: {
       name: '',
       type: 'boolean',
@@ -150,42 +152,49 @@ export function HabitFormDialog({
     setValue('selectedDays', next, { shouldDirty: true, shouldTouch: true })
   }
 
+  const typeLabels = {
+    boolean: t('habits.types.boolean'),
+    numeric: t('habits.types.numeric'),
+    duration: t('habits.types.duration'),
+  }
+
   const frequencyHint =
     selectedFrequency === 'daily'
-      ? 'Каждый день'
+      ? t('habits.everyDay')
       : selectedFrequency === 'custom'
-        ? 'Выберите дни'
-        : 'N раз в неделю'
+        ? t('habits.chooseDays')
+        : t('habits.timesPerWeek')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Редактировать привычку' : 'Новая привычка'}</DialogTitle>
+          <DialogTitle>{mode === 'edit' ? t('habits.editHabit') : t('habits.newHabit')}</DialogTitle>
           <DialogDescription>
-            Заполните параметры привычки и сохраните её в списке.
+            {t('habits.habitDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-200">Название</label>
-            <Input {...register('name')} placeholder="Например: Чтение" />
+            <label className="text-sm font-medium text-zinc-200">{t('habits.name')}</label>
+            <Input {...register('name')} placeholder={t('habits.namePlaceholder')} />
             {errors.name ? <p className="text-sm text-rose-400">{errors.name.message}</p> : null}
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-200">Тип</label>
+            <label className="text-sm font-medium text-zinc-200">{t('habits.type')}</label>
             <div className="flex flex-wrap gap-3">
               {(['boolean', 'numeric', 'duration'] as HabitType[]).map((type) => (
                 <label key={type} className="flex items-center gap-2 rounded-full border border-zinc-700 px-3 py-2 text-sm text-zinc-200">
                   <input
                     type="radio"
                     value={type}
+                    aria-label={typeLabels[type]}
                     disabled={mode === 'edit'}
                     {...register('type')}
                   />
-                  {type === 'boolean' ? 'boolean' : type === 'numeric' ? 'numeric' : 'duration'}
+                  {typeLabels[type]}
                 </label>
               ))}
             </div>
@@ -194,16 +203,16 @@ export function HabitFormDialog({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-200">Категория</label>
+              <label className="text-sm font-medium text-zinc-200">{t('habits.category')}</label>
               <select className="flex h-10 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100" {...register('category')}>
-                <option value="All">Все</option>
-                <option value="Health">Здоровье</option>
-                <option value="Work">Работа</option>
-                <option value="Learning">Обучение</option>
+                <option value="All">{t('habits.categories.all')}</option>
+                <option value="Health">{t('habits.categories.health')}</option>
+                <option value="Work">{t('habits.categories.work')}</option>
+                <option value="Learning">{t('habits.categories.learning')}</option>
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-200">Цвет</label>
+              <label className="text-sm font-medium text-zinc-200">{t('habits.color')}</label>
               <div className="flex flex-wrap gap-2">
                 {colorOptions.map((color) => (
                   <button
@@ -220,7 +229,7 @@ export function HabitFormDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-200">Иконка</label>
+            <label className="text-sm font-medium text-zinc-200">{t('habits.icon')}</label>
             <div className="grid grid-cols-5 gap-2">
               {iconOptions.map((icon) => (
                 <button
@@ -238,24 +247,24 @@ export function HabitFormDialog({
           {selectedType === 'numeric' ? (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-200">Цель</label>
-                <Input type="number" {...register('targetValue')} placeholder="20" />
+                <label className="text-sm font-medium text-zinc-200">{t('habits.targetValue')}</label>
+                <Input type="number" {...register('targetValue')} placeholder={t('habits.defaultTarget')} />
                 {errors.targetValue ? <p className="text-sm text-rose-400">{errors.targetValue.message}</p> : null}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-200">Единица</label>
-                <Input {...register('unit')} placeholder="шт" />
+                <label className="text-sm font-medium text-zinc-200">{t('habits.unit')}</label>
+                <Input {...register('unit')} placeholder={t('habits.defaultUnit')} />
               </div>
             </div>
           ) : null}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-200">Частота</label>
+            <label className="text-sm font-medium text-zinc-200">{t('habits.frequency')}</label>
             <div className="flex flex-wrap gap-2">
               {([
-                { value: 'daily', label: 'Ежедневно' },
-                { value: 'custom', label: 'Конкретные дни' },
-                { value: 'weekly', label: 'N раз в неделю' },
+                { value: 'daily', label: t('habits.daily') },
+                { value: 'custom', label: t('habits.custom') },
+                { value: 'weekly', label: t('habits.weekly') },
               ] as const).map((option) => (
                 <label key={option.value} className="flex items-center gap-2 rounded-full border border-zinc-700 px-3 py-2 text-sm text-zinc-200">
                   <input type="radio" value={option.value} {...register('frequency')} />
@@ -276,7 +285,7 @@ export function HabitFormDialog({
                   className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm ${selectedDays.includes(day) ? 'border-cyan-400 bg-cyan-500/10 text-cyan-300' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}
                 >
                   {selectedDays.includes(day) ? <Check size={14} /> : <Circle size={14} />}
-                  {day}
+                  {t(`days.${day}`)}
                 </button>
               ))}
             </div>
@@ -284,7 +293,7 @@ export function HabitFormDialog({
 
           {selectedFrequency === 'weekly' ? (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-200">Количество раз в неделю</label>
+              <label className="text-sm font-medium text-zinc-200">{t('habits.weeklyCount')}</label>
               <Input type="number" {...register('weeklyCount')} min="1" />
               {errors.weeklyCount ? <p className="text-sm text-rose-400">{errors.weeklyCount.message}</p> : null}
             </div>
@@ -293,11 +302,11 @@ export function HabitFormDialog({
           <div className="flex justify-end gap-2">
             <DialogClose asChild>
               <Button type="button" variant="outline">
-                Отмена
+                {t('habits.cancel')}
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isSubmitting}>
-              Сохранить
+              {t('habits.save')}
             </Button>
           </div>
         </form>

@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -275,10 +276,7 @@ func (s *AuthService) RegenerateRecoveryCodes(ctx context.Context, userID, passw
 }
 
 func (s *AuthService) createAccessTokenWithMustChangePassword(userID string) (string, error) {
-	privateKeyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
-	if privateKeyPath == "" {
-		privateKeyPath = "secrets/jwt.key"
-	}
+	privateKeyPath := resolvePrivateKeyPath()
 
 	privateKeyPEM, err := os.ReadFile(privateKeyPath)
 	if err != nil {
@@ -319,10 +317,7 @@ func (s *AuthService) generateRecoveryCodes() ([]string, []string, error) {
 }
 
 func (s *AuthService) createAccessToken(userID string) (string, error) {
-	privateKeyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
-	if privateKeyPath == "" {
-		privateKeyPath = "secrets/jwt.key"
-	}
+	privateKeyPath := resolvePrivateKeyPath()
 
 	privateKeyPEM, err := os.ReadFile(privateKeyPath)
 	if err != nil {
@@ -350,6 +345,24 @@ func newRefreshToken() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+func resolvePrivateKeyPath() string {
+	if path := os.Getenv("JWT_PRIVATE_KEY_PATH"); path != "" {
+		return path
+	}
+
+	candidates := []string{
+		"secrets/jwt.key",
+		filepath.Join("..", "secrets", "jwt.key"),
+		filepath.Join(".", "secrets", "jwt.key"),
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return "secrets/jwt.key"
 }
 
 func validateRegisterRequest(req domain.RegisterRequest) error {
