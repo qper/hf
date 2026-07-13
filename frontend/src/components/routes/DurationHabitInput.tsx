@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, ChangeEvent, KeyboardEvent } from 'react'
 import { createEntry, Board, BoardHabit } from '@/api/board'
 
 type DurationHabitInputProps = {
@@ -62,7 +62,7 @@ export function DurationHabitInput({
     },
   })
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value)
   }
 
@@ -73,7 +73,7 @@ export function DurationHabitInput({
     }
   }
 
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleInputBlur()
     }

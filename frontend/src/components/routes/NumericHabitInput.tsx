@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useState, ChangeEvent, KeyboardEvent } from 'react'
 import { createEntry, Board, BoardHabit } from '@/api/board'
 
 type NumericHabitInputProps = {
@@ -76,7 +76,7 @@ export function NumericHabitInput({
     createEntryMutation.mutate(Math.max(0, current - 1))
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value)
   }
 
@@ -88,7 +88,7 @@ export function NumericHabitInput({
     setIsEditing(false)
   }
 
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleInputBlur()
     } else if (e.key === 'Escape') {

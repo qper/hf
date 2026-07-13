@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NumericHabitInput } from './NumericHabitInput'
 import { describe, it, expect } from 'vitest'
 import { BoardHabit } from '@/api/board'
+import type { ReactNode } from 'react'
 
 const mockHabit: BoardHabit = {
   id: 'test-id',
@@ -26,7 +26,7 @@ const createWrapper = () => {
       mutations: { retry: false },
     },
   })
-  return ({ children }: { children: React.ReactNode }) => (
+  return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
@@ -106,7 +106,6 @@ describe('NumericHabitInput', () => {
   })
 
   it('allows inline editing when value is clicked', async () => {
-    const user = userEvent.setup()
     render(
       <NumericHabitInput
         habit={mockHabit}
@@ -118,7 +117,7 @@ describe('NumericHabitInput', () => {
     )
     
     const valueDisplay = screen.getByText('5 / 8')
-    await user.click(valueDisplay)
+    valueDisplay.click()
     
     const input = screen.getByDisplayValue('5')
     expect(input).toBeTruthy()

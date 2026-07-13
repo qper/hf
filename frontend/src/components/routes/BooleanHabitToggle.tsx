@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { useState } from 'react'
-import { createEntry, updateEntry, deleteEntry, Board, BoardHabit } from '@/api/board'
-import { useTranslation } from 'react-i18next'
+import { createEntry, Board, BoardHabit } from '@/api/board'
 
 type BooleanHabitToggleProps = {
   habit: BoardHabit
@@ -15,7 +14,6 @@ export function BooleanHabitToggle({
   date,
   isEditable,
 }: BooleanHabitToggleProps) {
-  const { i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [isAnimating, setIsAnimating] = useState(false)
 

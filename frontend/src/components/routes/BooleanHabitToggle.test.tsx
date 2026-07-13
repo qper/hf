@@ -1,9 +1,9 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BooleanHabitToggle } from './BooleanHabitToggle'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { BoardHabit } from '@/api/board'
+import type { ReactNode } from 'react'
 
 const mockHabit: BoardHabit = {
   id: 'test-id',
@@ -24,7 +24,7 @@ const createWrapper = () => {
       mutations: { retry: false },
     },
   })
-  return ({ children }: { children: React.ReactNode }) => (
+  return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
@@ -92,10 +92,9 @@ describe('BooleanHabitToggle', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const button = screen.getByRole('button')
-    const style = window.getComputedStyle(button)
-    const minWidth = (button as HTMLButtonElement).style.minWidth
-    const minHeight = (button as HTMLButtonElement).style.minHeight
+    const button = screen.getByRole('button') as HTMLButtonElement
+    const minWidth = button.style.minWidth
+    const minHeight = button.style.minHeight
     expect(minWidth).toBe('44px')
     expect(minHeight).toBe('44px')
   })
