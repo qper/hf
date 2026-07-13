@@ -403,6 +403,34 @@ func (h *Handler) ArchiveHabit(c echo.Context) error {
 	return c.JSON(http.StatusOK, habit)
 }
 
+func (h *Handler) GetBoard(c echo.Context) error {
+	if h.boardService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "board service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	date := c.Param("date")
+	if strings.TrimSpace(date) == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid date"})
+	}
+
+	userTZ := time.Now().Location()
+	board, err := h.boardService.GetBoard(c.Request().Context(), userID, date, userTZ)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrBoardFutureDate):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "future date is not allowed"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not load board"})
+		}
+	}
+	return c.JSON(http.StatusOK, board)
+}
+
 func (h *Handler) ReorderHabits(c echo.Context) error {
 	if h.habitService == nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "habit service unavailable"})

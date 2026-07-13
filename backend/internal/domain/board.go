@@ -22,8 +22,8 @@ type BoardHabit struct {
 }
 
 type Board struct {
-	Date        string         `json:"date"`
-	IsEditable  bool           `json:"is_editable"`
-	Progress    BoardProgress  `json:"progress"`
-	Habits      []BoardHabit   `json:"habits"`
+	Date       string        `json:"date"`
+	IsEditable bool          `json:"is_editable"`
+	Progress   BoardProgress `json:"progress"`
+	Habits     []BoardHabit  `json:"habits"`
 }
