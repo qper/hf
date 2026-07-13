@@ -14,6 +14,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HabitsRouteImport } from './routes/habits'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BoardDateRouteImport } from './routes/board.$date'
 
 const TestAuthRoute = TestAuthRouteImport.update({
   id: '/test-auth',
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BoardDateRoute = BoardDateRouteImport.update({
+  id: '/board/$date',
+  path: '/board/$date',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/test-auth': typeof TestAuthRoute
+  '/board/$date': typeof BoardDateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/test-auth': typeof TestAuthRoute
+  '/board/$date': typeof BoardDateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,22 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/test-auth': typeof TestAuthRoute
+  '/board/$date': typeof BoardDateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/habits' | '/login' | '/register' | '/test-auth'
+  fullPaths:
+    '/' | '/habits' | '/login' | '/register' | '/test-auth' | '/board/$date'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/habits' | '/login' | '/register' | '/test-auth'
-  id: '__root__' | '/' | '/habits' | '/login' | '/register' | '/test-auth'
+  to: '/' | '/habits' | '/login' | '/register' | '/test-auth' | '/board/$date'
+  id:
+    | '__root__'
+    | '/'
+    | '/habits'
+    | '/login'
+    | '/register'
+    | '/test-auth'
+    | '/board/$date'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +94,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   TestAuthRoute: typeof TestAuthRoute
+  BoardDateRoute: typeof BoardDateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/board/$date': {
+      id: '/board/$date'
+      path: '/board/$date'
+      fullPath: '/board/$date'
+      preLoaderRoute: typeof BoardDateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   TestAuthRoute: TestAuthRoute,
+  BoardDateRoute: BoardDateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

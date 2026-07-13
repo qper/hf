@@ -10,6 +10,11 @@
   "common": {
     "loading": "Loading...",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "today": "Today"
+  },
+  "board": {
+    "title": "Daily Tracker",
+    "noHabits": "No habits yet. Create one to get started!"
   }
 }

@@ -4,13 +4,23 @@ import { describe, expect, it } from 'vitest'
 import App from '@/App'
 
 describe('router', () => {
+  it('redirects home to board with today\'s date', async () => {
+    render(<App />)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toContain('/board/')
+    })
+  })
+
   it('navigates to login', async () => {
     render(<App />)
 
-    await waitFor(() => expect(screen.getByText(/home route/i)).toBeTruthy())
-    expect(window.location.pathname).toBe('/')
+    await waitFor(() => {
+      expect(window.location.pathname).toContain('/board/')
+    })
 
-    await userEvent.click(screen.getByRole('link', { name: /login/i }))
+    const loginLinks = screen.getAllByRole('link', { name: /login/i })
+    await userEvent.click(loginLinks[0])
 
     await waitFor(() => expect(window.location.pathname).toBe('/login'))
   })

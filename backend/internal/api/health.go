@@ -39,6 +39,20 @@ type HabitService interface {
 	Reorder(ctx context.Context, userID string, ids []string) ([]domain.Habit, error)
 }
 
+type BoardService interface {
+	GetBoard(ctx context.Context, userID string, date string, userTZ *time.Location) (*domain.Board, error)
+}
+
+type EntryService interface {
+	Create(ctx context.Context, userID string, req domain.CreateEntryRequest) (*domain.Entry, error)
+	Update(ctx context.Context, userID string, entryID string, req domain.UpdateEntryRequest) (*domain.Entry, error)
+	Delete(ctx context.Context, userID string, entryID string) (*domain.Entry, error)
+}
+
+type StreakService interface {
+	GetStreak(ctx context.Context, userID string, habitID string, today string) (*domain.Streak, error)
+}
+
 type CategoryService interface {
 	Create(ctx context.Context, userID string, req domain.CreateCategoryRequest) (*domain.Category, error)
 	List(ctx context.Context, userID string) ([]domain.Category, error)
@@ -65,6 +79,9 @@ type Handler struct {
 	version         string
 	authService     AuthService
 	habitService    HabitService
+	boardService    BoardService
+	entryService    EntryService
+	streakService   StreakService
 	categoryService CategoryService
 	dbChecker       DBChecker
 }
@@ -85,8 +102,8 @@ func NewHandlerWithCategory(healthService *service.HealthService, version string
 	return &Handler{healthService: healthService, version: version, authService: authService, categoryService: categoryService}
 }
 
-func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService) *Handler {
-	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService}
+func NewHandlerWithServices(healthService *service.HealthService, version string, authService AuthService, habitService HabitService, categoryService CategoryService, boardService BoardService, entryService EntryService, streakService StreakService) *Handler {
+	return &Handler{healthService: healthService, version: version, authService: authService, habitService: habitService, categoryService: categoryService, boardService: boardService, entryService: entryService, streakService: streakService}
 }
 
 func (h *Handler) WithDBChecker(dbChecker DBChecker) *Handler {
@@ -122,6 +139,11 @@ func (h *Handler) Register(e *echo.Echo) {
 	apiGroup.GET("/habits", h.ListHabits)
 	apiGroup.POST("/habits", h.CreateHabit)
 	apiGroup.GET("/habits/:id", h.GetHabit)
+	apiGroup.GET("/board/:date", h.GetBoard)
+	apiGroup.GET("/habits/:id/streak", h.GetHabitStreak)
+	apiGroup.POST("/entries", h.CreateEntry)
+	apiGroup.PUT("/entries/:id", h.UpdateEntry)
+	apiGroup.DELETE("/entries/:id", h.DeleteEntry)
 	apiGroup.PUT("/habits/:id", h.UpdateHabit)
 	apiGroup.DELETE("/habits/:id", h.DeleteHabit)
 	apiGroup.PATCH("/habits/:id/archive", h.ArchiveHabit)
@@ -395,6 +417,129 @@ func (h *Handler) ArchiveHabit(c echo.Context) error {
 		}
 	}
 	return c.JSON(http.StatusOK, habit)
+}
+
+func (h *Handler) GetBoard(c echo.Context) error {
+	if h.boardService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "board service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	date := c.Param("date")
+	if strings.TrimSpace(date) == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid date"})
+	}
+
+	userTZ := time.Now().Location()
+	board, err := h.boardService.GetBoard(c.Request().Context(), userID, date, userTZ)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrBoardFutureDate):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "future date is not allowed"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not load board"})
+		}
+	}
+	return c.JSON(http.StatusOK, board)
+}
+
+func (h *Handler) CreateEntry(c echo.Context) error {
+	if h.entryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "entry service unavailable"})
+	}
+
+	var req domain.CreateEntryRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	entry, err := h.entryService.Create(c.Request().Context(), userID, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrEntryForbidden):
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "entry date is out of edit window"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not create entry"})
+		}
+	}
+	return c.JSON(http.StatusCreated, entry)
+}
+
+func (h *Handler) UpdateEntry(c echo.Context) error {
+	if h.entryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "entry service unavailable"})
+	}
+
+	var req domain.UpdateEntryRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	entry, err := h.entryService.Update(c.Request().Context(), userID, c.Param("id"), req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not update entry"})
+	}
+	if entry == nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "entry not found"})
+	}
+	return c.JSON(http.StatusOK, entry)
+}
+
+func (h *Handler) DeleteEntry(c echo.Context) error {
+	if h.entryService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "entry service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	entry, err := h.entryService.Delete(c.Request().Context(), userID, c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not delete entry"})
+	}
+	if entry == nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "entry not found"})
+	}
+	return c.JSON(http.StatusOK, entry)
+}
+
+func (h *Handler) GetHabitStreak(c echo.Context) error {
+	if h.streakService == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "streak service unavailable"})
+	}
+
+	userID, ok := c.Get(ContextUserID).(string)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing token"})
+	}
+
+	today := time.Now().UTC().Format("2006-01-02")
+	streak, err := h.streakService.GetStreak(c.Request().Context(), userID, c.Param("id"), today)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrStreakNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "habit not found"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not load streak"})
+		}
+	}
+	return c.JSON(http.StatusOK, streak)
 }
 
 func (h *Handler) ReorderHabits(c echo.Context) error {

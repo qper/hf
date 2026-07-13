@@ -179,7 +179,10 @@ func newServer(cfg ...interface{}) *echo.Echo {
 		habitService := service.NewHabitService(habitRepo)
 		categoryRepo := repository.NewCategoryRepository(db)
 		categoryService := service.NewCategoryService(categoryRepo)
-		apiHandler = api.NewHandlerWithServices(healthService, appConfig.Version, authService, habitService, categoryService)
+		boardService := service.NewBoardService(repository.NewBoardRepository(db), appConfig)
+		entryService := service.NewEntryService(repository.NewEntryRepository(db), appConfig)
+		streakService := service.NewStreakService(repository.NewEntryRepository(db), appConfig)
+		apiHandler = api.NewHandlerWithServices(healthService, appConfig.Version, authService, habitService, categoryService, boardService, entryService, streakService)
 		apiHandler = apiHandler.WithDBChecker(api.NewDBChecker(db))
 	}
 	apiHandler.Register(e)
