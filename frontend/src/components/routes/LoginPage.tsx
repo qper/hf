@@ -16,7 +16,7 @@ const loginSchema = (t: (key: string) => string) =>
     password: z.string().min(1, t('auth.passwordRequired')),
   })
 
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = z.infer<ReturnType<typeof loginSchema>>
 
 export function LoginPage() {
   const navigate = useNavigate()

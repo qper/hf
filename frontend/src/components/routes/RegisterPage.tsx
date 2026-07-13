@@ -33,7 +33,7 @@ const registerSchema = (t: (key: string) => string) =>
       message: t('errors.passwordMismatch'),
     })
 
-type RegisterFormValues = z.infer<typeof registerSchema>
+type RegisterFormValues = z.infer<ReturnType<typeof registerSchema>>
 
 const initialRecoveryCodes = Array.from(
   { length: 8 },
