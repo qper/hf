@@ -79,8 +79,16 @@ export function RegisterPage() {
       }
 
       const data = await response.json()
-      await auth.login(values.username, values.password)
-      setRecoveryCodes(data.recovery_codes || initialRecoveryCodes)
+      const nextRecoveryCodes = Array.isArray(data?.recovery_codes) && data.recovery_codes.length > 0
+        ? data.recovery_codes
+        : initialRecoveryCodes
+
+      void auth.login(values.username, values.password).catch(() => {
+        // Keep the recovery-code dialog visible even if the follow-up auto-login fails.
+        // The user still needs to see the codes immediately after registration.
+      })
+
+      setRecoveryCodes(nextRecoveryCodes)
       setIsDialogOpen(true)
     } catch (err) {
       const errorMessage =
