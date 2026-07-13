@@ -19,7 +19,13 @@ import {
 const registerSchema = z
   .object({
     username: z.string().min(3, 'Минимум 3 символа'),
-    password: z.string().min(8, 'Минимум 8 символов'),
+    password: z
+      .string()
+      .min(8, 'Минимум 8 символов')
+      .refine(
+        (val) => /\d/.test(val),
+        'Должна быть минимум 1 цифра (0-9)',
+      ),
     confirmPassword: z.string().min(1, 'Подтвердите пароль'),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -64,15 +70,30 @@ export function RegisterPage() {
         }),
       })
 
+      const errorData = await response.json().catch(() => ({}))
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage =
-          errorData.message || 'Ошибка при регистрации. Попробуйте позже.'
+        let errorMessage = 'Ошибка при регистрации. Попробуйте позже.'
+        
+        // Парсим специфичные ошибки
+        if (typeof errorData.error === 'string') {
+          if (errorData.error.includes('invalid password')) {
+            errorMessage = 'Пароль должен содержать минимум 8 символов и 1 цифру (0-9)'
+          } else if (errorData.error.includes('invalid username')) {
+            errorMessage = 'Имя пользователя должно содержать 3-50 символов (буквы, цифры, подчеркивание)'
+          } else if (errorData.error.includes('invalid email')) {
+            errorMessage = 'Введите корректный email'
+          } else if (errorData.error.includes('already exists')) {
+            errorMessage = 'Это имя пользователя или email уже используется'
+          } else {
+            errorMessage = errorData.error
+          }
+        }
         setError(errorMessage)
         return
       }
 
-      const data = await response.json()
+      const data = errorData as any
       setRecoveryCodes(data.recovery_codes || initialRecoveryCodes)
       setIsDialogOpen(true)
     } catch (err) {
@@ -172,6 +193,9 @@ export function RegisterPage() {
             {errors.password ? (
               <p className="text-sm text-rose-400">{errors.password.message}</p>
             ) : null}
+            <p className="text-xs text-zinc-400">
+              Минимум 8 символов и 1 цифра (0-9)
+            </p>
           </div>
 
           <div className="space-y-2">

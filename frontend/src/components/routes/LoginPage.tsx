@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { login } from '@/api/auth'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Введите username'),
@@ -16,6 +17,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
+  const navigate = useNavigate()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const {
     register,
@@ -28,25 +30,17 @@ export function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setErrorMessage(null)
     try {
-      const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
+      await login(values.username, values.password)
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setErrorMessage('Неверный логин или пароль')
-          return
-        }
-
+      // Успешный логин - переходим на доску
+      const today = new Date().toISOString().split('T')[0]
+      navigate({ to: '/board/$date', params: { date: today } })
+    } catch (err) {
+      if (err instanceof Error) {
+        setErrorMessage(err.message)
+      } else {
         setErrorMessage('Не удалось выполнить вход. Попробуйте позже.')
-        return
       }
-
-      // TODO: continue on successful login
-    } catch {
-      setErrorMessage('Ошибка сети. Попробуйте позже.')
     }
   }
 
