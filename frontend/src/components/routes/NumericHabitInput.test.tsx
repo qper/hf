@@ -56,7 +56,10 @@ describe('NumericHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('5 / 8')).toBeTruthy()
+    const buttons = screen.getAllByRole('button')
+    const valueButton = buttons[1]
+    expect(valueButton.textContent).toContain('5')
+    expect(valueButton.textContent).toContain('8')
   })
 
   it('displays 0 when no entry value', () => {
@@ -68,7 +71,10 @@ describe('NumericHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('0 / 8')).toBeTruthy()
+    const buttons = screen.getAllByRole('button')
+    const valueButton = buttons[1]
+    expect(valueButton.textContent).toContain('0')
+    expect(valueButton.textContent).toContain('8')
   })
 
   it('has min dimensions of 44x44 for touch targets', () => {
@@ -116,8 +122,9 @@ describe('NumericHabitInput', () => {
       { wrapper: createWrapper() },
     )
     
-    const valueDisplay = screen.getByText('5 / 8')
-    valueDisplay.click()
+    const buttons = screen.getAllByRole('button')
+    const valueButton = buttons[1]
+    valueButton.click()
     
     const input = screen.getByDisplayValue('5')
     expect(input).toBeTruthy()

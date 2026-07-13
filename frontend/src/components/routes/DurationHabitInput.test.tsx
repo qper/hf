@@ -40,7 +40,7 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('textbox') as HTMLInputElement
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
     expect(input).toBeTruthy()
     expect(input.type).toBe('number')
   })
@@ -54,7 +54,7 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('textbox') as HTMLInputElement
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
     expect(input.placeholder).toBe('0 мин')
   })
 
@@ -79,7 +79,7 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('textbox') as HTMLInputElement
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
     expect(input.inputMode).toBe('numeric')
   })
 
@@ -92,7 +92,7 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('textbox') as HTMLInputElement
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
     expect(input.disabled).toBe(true)
   })
 
@@ -106,7 +106,7 @@ describe('DurationHabitInput', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const input = screen.getByRole('textbox') as HTMLInputElement
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
     expect(input.value).toBe('15')
   })
 })
