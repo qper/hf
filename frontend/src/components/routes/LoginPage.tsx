@@ -4,27 +4,30 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as auth from '@/api/auth'
 
-const loginSchema = z.object({
-  username: z.string().min(1, 'Введите username'),
-  password: z.string().min(1, 'Введите пароль'),
-})
+const loginSchema = (t: (key: string) => string) =>
+  z.object({
+    username: z.string().min(1, t('auth.usernameRequired')),
+    password: z.string().min(1, t('auth.passwordRequired')),
+  })
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginSchema(t)),
   })
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -35,12 +38,12 @@ export function LoginPage() {
       navigate({ to: '/board/$date', params: { date: today } })
     } catch (error) {
       if (error instanceof Response && error.status === 401) {
-        setErrorMessage('Неверный логин или пароль')
+        setErrorMessage(t('errors.invalidCredentials'))
         return
       }
 
       if (error instanceof Error && error.message === 'session_expired') {
-        setErrorMessage('Сессия истекла. Войдите снова.')
+        setErrorMessage(t('errors.sessionExpired'))
         return
       }
 
@@ -49,12 +52,12 @@ export function LoginPage() {
         setErrorMessage(
           typeof data?.error === 'string'
             ? data.error
-            : 'Не удалось выполнить вход. Попробуйте позже.',
+            : t('errors.loginFailed'),
         )
         return
       }
 
-      setErrorMessage('Ошибка сети. Попробуйте позже.')
+      setErrorMessage(t('errors.network'))
     }
   }
 
@@ -63,11 +66,11 @@ export function LoginPage() {
       <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl shadow-black/30">
         <div className="mb-8 space-y-3">
           <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
-            Access
+            {t('common.access')}
           </p>
-          <h2 className="text-3xl font-semibold">Login</h2>
+          <h2 className="text-3xl font-semibold">{t('common.signIn')}</h2>
           <p className="max-w-xl text-sm text-zinc-400">
-            Войдите в систему, чтобы продолжить работу с HabitFlow.
+            {t('common.loginSubtitle')}
           </p>
         </div>
 
@@ -77,7 +80,7 @@ export function LoginPage() {
               htmlFor="username"
               className="block text-sm font-medium text-zinc-200"
             >
-              Username
+              {t('common.username')}
             </label>
             <Input
               id="username"
@@ -94,7 +97,7 @@ export function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-zinc-200"
             >
-              Password
+              {t('common.password')}
             </label>
             <Input
               id="password"
@@ -118,20 +121,20 @@ export function LoginPage() {
 
           <div className="space-y-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Вход...' : 'Войти'}
+              {isSubmitting ? t('common.signingIn') : t('common.signIn')}
             </Button>
             <div className="flex flex-col gap-2 text-center text-sm text-zinc-400">
               <Link
                 to="/register"
                 className="text-cyan-300 underline-offset-4 hover:underline"
               >
-                Зарегистрироваться
+                {t('common.loginLink')}
               </Link>
               <Link
                 to="/register"
                 className="text-cyan-300 underline-offset-4 hover:underline"
               >
-                Войти через recovery code
+                {t('common.recoveryLink')}
               </Link>
             </div>
           </div>

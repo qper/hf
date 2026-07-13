@@ -28,7 +28,7 @@ describe('Auth pages', () => {
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/password/i), {
+    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
       target: { value: 'wrong' },
     })
     fireEvent.submit(screen.getByRole('button', { name: /войти/i }))
@@ -49,7 +49,7 @@ describe('Auth pages', () => {
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/password/i), {
+    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
       target: { value: 'Password1!' },
     })
     fireEvent.submit(screen.getByRole('button', { name: /войти/i }))
@@ -62,15 +62,15 @@ describe('Auth pages', () => {
   it('shows inline error for password mismatch on register page', async () => {
     renderWithRouter('/register')
 
-    await screen.findByLabelText(/confirm password/i)
+    await screen.findByLabelText(/подтверд|confirm/i)
 
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/^password$/i), {
+    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
       target: { value: 'Password1!' },
     })
-    fireEvent.input(screen.getByLabelText(/confirm password/i), {
+    fireEvent.input(screen.getByLabelText(/подтверд|confirm/i), {
       target: { value: 'Password2!' },
     })
     fireEvent.submit(
@@ -83,15 +83,15 @@ describe('Auth pages', () => {
   it('shows a password policy error for weak passwords', async () => {
     renderWithRouter('/register')
 
-    await screen.findByLabelText(/^password$/i)
+    await screen.findByLabelText(/пароль|password/i)
 
     fireEvent.input(screen.getByLabelText(/username/i), {
       target: { value: 'alice' },
     })
-    fireEvent.input(screen.getByLabelText(/^password$/i), {
+    fireEvent.input(screen.getByLabelText(/пароль|password/i), {
       target: { value: 'short' },
     })
-    fireEvent.input(screen.getByLabelText(/confirm password/i), {
+    fireEvent.input(screen.getByLabelText(/подтверд|confirm/i), {
       target: { value: 'short' },
     })
     fireEvent.submit(

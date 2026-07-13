@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Download, FilePlus, Shield, CheckCircle2 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,19 +18,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-const registerSchema = z
-  .object({
-    username: z.string().min(3, 'Минимум 3 символа'),
-    password: z
-      .string()
-      .min(8, 'Минимум 8 символов')
-      .regex(/[0-9]/, 'Нужна хотя бы одна цифра'),
-    confirmPassword: z.string().min(1, 'Подтвердите пароль'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    path: ['confirmPassword'],
-    message: 'Пароли не совпадают',
-  })
+const registerSchema = (t: (key: string) => string) =>
+  z
+    .object({
+      username: z.string().min(3, t('auth.usernameMin')),
+      password: z
+        .string()
+        .min(8, t('errors.passwordTooShort'))
+        .regex(/[0-9]/, t('errors.passwordDigit')),
+      confirmPassword: z.string().min(1, t('auth.confirmPasswordRequired')),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      path: ['confirmPassword'],
+      message: t('errors.passwordMismatch'),
+    })
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
@@ -40,6 +42,7 @@ const initialRecoveryCodes = Array.from(
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
   const [accepted, setAccepted] = useState(false)
@@ -51,7 +54,7 @@ export function RegisterPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema(t)),
   })
 
   const onSubmit = async (values: RegisterFormValues) => {
@@ -73,7 +76,7 @@ export function RegisterPage() {
         const errorMessage =
           errorData?.message ||
           errorData?.error ||
-          'Ошибка при регистрации. Попробуйте позже.'
+          t('errors.registrationFailed')
         setError(errorMessage)
         return
       }
@@ -84,7 +87,7 @@ export function RegisterPage() {
       setIsDialogOpen(true)
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Ошибка подключения. Попробуйте позже.'
+        err instanceof Error ? err.message : t('errors.network')
       setError(errorMessage)
       setRecoveryCodes(initialRecoveryCodes)
       setIsDialogOpen(true)
@@ -98,7 +101,7 @@ export function RegisterPage() {
       setTimeout(() => setCopySuccess(false), 2000)
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Ошибка при копировании кодов.',
+        err instanceof Error ? err.message : t('errors.copyFailed'),
       )
     }
   }
@@ -115,7 +118,7 @@ export function RegisterPage() {
       URL.revokeObjectURL(link.href)
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Ошибка при скачивании кодов.',
+        err instanceof Error ? err.message : t('errors.downloadFailed'),
       )
     }
   }
@@ -131,11 +134,11 @@ export function RegisterPage() {
       <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl shadow-black/30">
         <div className="mb-8 space-y-3">
           <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">
-            Access
+            {t('common.access')}
           </p>
-          <h2 className="text-3xl font-semibold">Register</h2>
+          <h2 className="text-3xl font-semibold">{t('common.register')}</h2>
           <p className="max-w-xl text-sm text-zinc-400">
-            Создайте аккаунт и сохраните recovery codes для безопасного доступа.
+            {t('common.registerSubtitle')}
           </p>
         </div>
 
@@ -151,7 +154,7 @@ export function RegisterPage() {
               htmlFor="username"
               className="block text-sm font-medium text-zinc-200"
             >
-              Username
+              {t('common.username')}
             </label>
             <Input
               id="username"
@@ -168,7 +171,7 @@ export function RegisterPage() {
               htmlFor="password"
               className="block text-sm font-medium text-zinc-200"
             >
-              Password
+              {t('common.password')}
             </label>
             <Input
               id="password"
@@ -186,7 +189,7 @@ export function RegisterPage() {
               htmlFor="confirmPassword"
               className="block text-sm font-medium text-zinc-200"
             >
-              Confirm password
+              {t('common.confirmPassword')}
             </label>
             <Input
               id="confirmPassword"
@@ -202,7 +205,7 @@ export function RegisterPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? 'Создание...' : 'Зарегистрироваться'}
+            {isSubmitting ? t('common.registering') : t('common.register')}
           </Button>
         </form>
       </div>
@@ -211,10 +214,9 @@ export function RegisterPage() {
         <Dialog.Portal>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Сохраните recovery codes</DialogTitle>
+              <DialogTitle>{t('common.recoveryCodesTitle')}</DialogTitle>
               <DialogDescription>
-                Они нужны для восстановления доступа. Скопируйте или скачайте
-                кодовый файл.
+                {t('common.recoveryCodesDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -223,7 +225,7 @@ export function RegisterPage() {
                 <div className="mb-4 flex items-center gap-2 text-cyan-300">
                   <FilePlus className="h-4 w-4" />
                   <span>
-                    Восстановите доступ с помощью одного из этих кодов.
+                    {t('common.recoveryCodesHelp')}
                   </span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -247,11 +249,11 @@ export function RegisterPage() {
                 >
                   {copySuccess ? (
                     <>
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> Скопировано!
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> {t('common.copied')}
                     </>
                   ) : (
                     <>
-                      <Shield className="mr-2 h-4 w-4" /> Копировать все
+                      <Shield className="mr-2 h-4 w-4" /> {t('common.copyAll')}
                     </>
                   )}
                 </Button>
@@ -261,7 +263,7 @@ export function RegisterPage() {
                   onClick={downloadCodes}
                   className="w-full sm:w-auto"
                 >
-                  <Download className="mr-2 h-4 w-4" /> Скачать .txt
+                  <Download className="mr-2 h-4 w-4" /> {t('common.downloadTxt')}
                 </Button>
               </div>
 
@@ -273,7 +275,7 @@ export function RegisterPage() {
                   className="h-5 w-5 rounded border-zinc-600 bg-zinc-900 text-cyan-400 focus:ring-cyan-400"
                 />
                 <span>
-                  Я сохранил коды и понимаю, что они нужны для восстановления.
+                  {t('common.recoveryCodesConsent')}
                 </span>
               </label>
 
@@ -284,7 +286,7 @@ export function RegisterPage() {
                     variant="outline"
                     className="w-full sm:w-auto"
                   >
-                    Закрыть
+                    {t('common.close')}
                   </Button>
                 </DialogClose>
                 <Button
@@ -293,7 +295,7 @@ export function RegisterPage() {
                   onClick={handleContinue}
                   className="w-full sm:w-auto"
                 >
-                  Продолжить
+                  {t('common.continue')}
                 </Button>
               </div>
             </div>
